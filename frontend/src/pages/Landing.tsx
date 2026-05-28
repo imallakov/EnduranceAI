@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import { IconLogo } from '../components/icons';
 import {
   Brain, Activity, CloudSun, Code2, ArrowRight, Github,
@@ -453,8 +454,11 @@ const Footer: React.FC = () => (
         <Link to="/register">Create account</Link>
       </div>
     </div>
-    <div className="landing-footer-bottom">
-      <span>© 2026 EnduranceAI · MIT License</span>
+    <div className="landing-footer-bottom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <span>© 2026 EnduranceAI · MIT License</span>
+        <LanguageSwitcher variant="mini" direction="up" />
+      </div>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         Built with <BarChart3 size={11} /> science, <Mountain size={11} /> data, and <Code2 size={11} /> open code.
       </span>
