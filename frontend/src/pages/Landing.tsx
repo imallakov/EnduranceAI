@@ -30,6 +30,7 @@ const Nav: React.FC<{ isAuthenticated: boolean }> = ({ isAuthenticated }) => {
         <a href="#faq" className="landing-nav-link">{t.landing.nav.faq}</a>
       </div>
       <div className="landing-nav-cta">
+        <LanguageSwitcher variant="mini" />
         <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
           <Github size={14} /> {t.landing.nav.github}
         </a>
@@ -484,7 +485,6 @@ const Footer: React.FC = () => {
       <div className="landing-footer-bottom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <span>{t.landing.footer.rights}</span>
-          <LanguageSwitcher variant="mini" direction="up" />
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           {t.landing.footer.builtWith1} <BarChart3 size={11} /> {t.landing.footer.builtWith2} <Mountain size={11} /> {t.landing.footer.builtWith3} <Code2 size={11} /> {t.landing.footer.builtWith4}
