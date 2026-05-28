@@ -1,0 +1,20 @@
+{
+  "dataset": "Boston 2016 holdout (trained on Boston 2015)",
+  "n_train": 26586,
+  "n_test": 26615,
+  "mae_min": 27.28,
+  "rmse_min": 38.35,
+  "r2": 0.1162,
+  "median_ae_min": 19.17,
+  "within_5min_pct": 13.9,
+  "within_10min_pct": 27.1,
+  "within_15min_pct": 40.0,
+  "features": [
+    "age",
+    "sex",
+    "course_difficulty_coefficient",
+    "weather_index",
+    "target_distance_km"
+  ],
+  "model": "Ridge(alpha=10) + XGBoost(500 est, depth=6, lr=0.05), ensemble 0.3R+0.7X"
+}

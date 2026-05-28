@@ -1,0 +1,39 @@
+# Cookie Policy
+
+**Version 1.0.1 — Effective May 26, 2026**
+
+This Cookie Policy explains what cookies and similar storage technologies EnduranceAI uses on your device, and how you can manage your preferences.
+
+## What are cookies?
+
+Cookies are small text files stored by your browser when you visit websites. They allow the website to remember information about your visit, such as your login status and preferences.
+
+## Cookies we use
+
+### Essential cookies (always active, cannot be disabled)
+
+| Name | Purpose | Duration |
+|---|---|---|
+| `access_token`, `refresh_token` (localStorage, not technically cookies but similar) | Authenticate you across page loads | Until you log out or 30 days |
+| `cookie_consent` (localStorage) | Remember your cookie preferences | Permanent (until you clear browser data) |
+| Django session `csrftoken` | Cross-site request forgery protection | Session |
+
+### Optional cookies (only with your consent)
+
+Currently we do NOT use any optional cookies. We do not use:
+- Advertising or marketing tracking cookies
+- Third-party analytics that identify individuals
+- Social media plugins that track across sites
+
+In the future, we may introduce anonymized product analytics (e.g., Plausible Analytics). If we do, you will be asked to consent before they activate, and you can disable them via the Cookie Consent banner.
+
+## Managing your cookies
+
+You can:
+- Accept or refuse optional cookies via the banner shown on your first visit
+- Change your choice anytime via the [Cookie Settings](/legal/cookies#settings) link in our footer
+- Delete all cookies/storage via your browser settings (this will log you out)
+
+## Contact
+
+Questions: support@endurance.yuzapp.space

@@ -1,0 +1,93 @@
+# Privacy Policy
+
+**Version 1.0.1 — Effective May 26, 2026**
+
+EnduranceAI ("we", "us", "our") is a marathon training and prediction service operated by an individual developer. All user data is stored on servers in the European Union. This Privacy Policy explains what personal data we collect, why, how we use it, and your rights regarding it.
+
+This policy is designed to comply with the General Data Protection Regulation (GDPR — EU users), the Russian Federal Law No. 152-FZ "On Personal Data" (RU users), and applicable similar regulations in other jurisdictions.
+
+## 1. What data we collect
+
+**Account data** (provided by you on registration):
+- Email address
+- First name, last name
+- Optional: age, sex, max heart rate, target marathon, target race date
+
+**Training data** (uploaded by you or synced from Strava):
+- Activity files (FIT/GPX/TCX) — including GPS coordinates, heart rate, pace, elevation
+- Strava activity metadata (start time, distance, duration, average heart rate)
+- Computed metrics: VDOT estimate, CTL/ATL/TSB, weekly volume
+
+**Strava integration data** (with your explicit consent via OAuth):
+- Strava athlete ID, username, avatar URL
+- Access and refresh tokens (encrypted at rest)
+- Activity summaries for the past 365 days
+
+**Technical data** (collected automatically):
+- IP address (for security audit, policy acceptance records)
+- Browser type, operating system (User-Agent header)
+- Session identifiers (in cookies — see Cookie Policy)
+
+We do NOT collect: payment information (no billing currently), real-time location, contacts, photos beyond uploaded activity files, social network data, or data from third parties other than Strava (with your consent).
+
+## 2. Why we use this data (legal basis)
+
+| Purpose | Legal basis (GDPR Art. 6) |
+|---|---|
+| Provide the training plan / prediction service | Performance of contract (Art. 6.1.b) |
+| Authenticate your account | Performance of contract |
+| Connect to Strava (if you opt in) | Your consent (Art. 6.1.a) |
+| Send service emails (password reset, security alerts) | Performance of contract |
+| Send marketing emails (only if you opted in) | Your consent |
+| Maintain security and prevent abuse | Legitimate interests (Art. 6.1.f) |
+| Comply with legal obligations | Legal obligation (Art. 6.1.c) |
+
+## 3. Who has access to your data
+
+- **Us (the developer)**: full access for service operation
+- **Strava (if connected)**: receives only standard OAuth requests on your behalf; we do not share data back with Strava beyond what their API requires
+- **OpenWeatherMap**: receives only GPS coordinates of your target race for weather forecasting; receives no personal identifiers
+- **Server hosting provider** (located in the European Union): stores all our data; bound by their own privacy commitments
+
+We do NOT sell your data. We do NOT share with advertisers. We do NOT use your training data to train ML models without your explicit opt-in consent (currently no such opt-in exists; this clause is a forward commitment).
+
+## 4. Where your data is stored
+
+Our servers are located in the European Union. If you are a citizen of the Russian Federation and using this service from Russia, please be aware that this may result in cross-border transfer of your personal data. By using the service, you consent to this transfer under Article 12 of Federal Law 152-FZ.
+
+## 5. How long we keep your data
+
+- **Account data**: kept while your account is active; deleted within 30 days after you delete your account
+- **Activity data**: kept while your account is active; deleted with account
+- **Strava tokens**: deleted immediately when you disconnect Strava
+- **Acceptance records (this Privacy Policy, Terms)**: kept for 3 years after account deletion for legal compliance
+- **Anonymized aggregate statistics** (e.g., "average VDOT of all users"): may be retained indefinitely
+
+## 6. Your rights
+
+Under GDPR and 152-FZ you have the right to:
+- **Access** the data we hold about you (contact support@endurance.yuzapp.space)
+- **Correct** inaccurate data (via Settings → Account)
+- **Delete** your account and all associated data (via Settings → Account → Delete Account)
+- **Withdraw consent** (e.g., disconnect Strava, opt out of marketing emails)
+- **Export** your data in a machine-readable format (forthcoming feature; until then, request via email)
+- **Restrict processing** or **object to processing** in certain circumstances
+- **Lodge a complaint** with a supervisory authority (e.g., Roskomnadzor in RF, CNIL in France, ICO in UK)
+
+## 7. Cookies
+
+See our separate [Cookie Policy](/legal/cookies). In short: we use essential session cookies; we do not use third-party tracking or advertising cookies.
+
+## 8. Children
+
+EnduranceAI is not intended for users under 16 years of age. We do not knowingly collect data from minors. If you are a parent and believe your child has registered, please contact us to remove the account.
+
+## 9. Changes to this policy
+
+We may update this Privacy Policy from time to time. The current version and effective date are shown at the top. We will notify you of material changes via email at least 30 days before they take effect. Your continued use after the effective date constitutes acceptance of the new policy.
+
+## 10. Contact
+
+All questions (privacy, security, legal, support): support@endurance.yuzapp.space
+
+For GDPR-related inquiries, you may also contact your local data protection authority.

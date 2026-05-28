@@ -1,0 +1,1681 @@
+@import "tailwindcss";
+
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource-variable/geist-mono";
+
+/* ── Design Tokens (Tailwind v4 @theme) ───────────────────────────── */
+@theme {
+  --color-primary: #1E1B4B;
+  --color-primary-2: #4F46E5;
+  --color-primary-50: #EEF0FF;
+  --color-accent: #F97066;
+  --color-accent-700: #E0544A;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #DC2626;
+  --color-bg: #FAFAF9;
+  --color-surface: #FFFFFF;
+  --color-border: #E7E5E4;
+  --color-border-soft: #F1EFEC;
+  --color-text-main: #0F172A;
+  --color-muted: #64748B;
+  --color-muted-2: #94A3B8;
+
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+/* ── CSS vars for inline-style usage (var(--primary) etc.) ────────── */
+:root {
+  --primary: #1E1B4B;
+  --primary-2: #4F46E5;
+  --primary-50: #EEF0FF;
+  --accent: #F97066;
+  --accent-700: #E0544A;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #DC2626;
+  --bg: #FAFAF9;
+  --surface: #FFFFFF;
+  --border: #E7E5E4;
+  --border-soft: #F1EFEC;
+  --text: #0F172A;
+  --muted: #64748B;
+  --muted-2: #94A3B8;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #F5F4F1;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #0F172A;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ── Typography utilities ─────────────────────────────────────────── */
+.mono {
+  font-family: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.label-sm {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.label-md {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Card ─────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
+}
+
+.card.hoverable:hover {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.10);
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.btn-coral {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-coral:hover { background: var(--accent-700); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-ghost:hover {
+  background: var(--bg);
+  border-color: #D6D3D1;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover { background: #161342; }
+
+/* ── Navigation ───────────────────────────────────────────────────── */
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #44403C;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 100ms ease, color 100ms ease;
+  text-decoration: none;
+}
+.nav-row:hover {
+  background: #F1EFEC;
+  color: var(--text);
+}
+.nav-row.active {
+  background: #ECEAFB;
+  color: var(--primary);
+}
+.nav-row.active svg { color: var(--primary); }
+.nav-row svg { color: #78716C; flex-shrink: 0; }
+
+/* ── Activity row ─────────────────────────────────────────────────── */
+.act-row {
+  transition: background 120ms ease;
+  cursor: pointer;
+}
+.act-row:hover { background: var(--bg); }
+
+/* ── Pills ────────────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.pill-indigo { background: var(--primary-2); color: #fff; }
+.pill-soft-success { background: #ECFDF5; color: #047857; }
+.pill-soft-warn { background: #FFFBEB; color: #B45309; }
+.pill-soft-muted { background: #F1F5F9; color: #475569; }
+.pill-soft-indigo { background: #EEF2FF; color: #4338CA; }
+
+/* ── Chip ─────────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: #fff;
+}
+.chip.active {
+  color: var(--text);
+  border-color: #C7C5C2;
+  background: #fff;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────── */
+.nice-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.nice-scroll::-webkit-scrollbar-thumb { background: #E7E5E4; border-radius: 4px; }
+.nice-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Chart tooltip ────────────────────────────────────────────────── */
+.chart-tooltip {
+  position: absolute;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  transform: translate(-50%, -110%);
+  white-space: nowrap;
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.4);
+  z-index: 5;
+}
+.chart-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+/* ── Focus rings ──────────────────────────────────────────────────── */
+.focus-input:focus {
+  outline: none;
+  border-color: var(--primary-2);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+/* ── Divider ──────────────────────────────────────────────────────── */
+.divider { height: 1px; background: var(--border); }
+
+/* ── Animations ───────────────────────────────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes map-skeleton-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.map-skeleton-pulse {
+  animation: map-skeleton-shimmer 1.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.featured-hero-details-link {
+  transition: color 120ms ease;
+}
+.featured-hero-details-link:hover {
+  color: #fff !important;
+  text-decoration: underline;
+}
+
+/* ── Leaflet map — glow polyline layers ───────────────────────────── */
+.leaflet-overlay-pane svg { overflow: visible; }
+.route-glow-l1 { filter: blur(26px); }
+.route-glow-l2 { filter: blur(16px); }
+.route-glow-l3 { filter: blur(8px); }
+.leaflet-container { font-family: inherit; background: #1E1B4B; }
+.leaflet-attribution-flag { display: none !important; }
+
+/* Brighten dark tiles for better street/label readability without losing
+   the cinematic mood. Applied only to tiles — overlays (route polyline)
+   are in a separate pane and unaffected. */
+.leaflet-tile-pane {
+  filter: brightness(1.35) contrast(0.92) saturate(1.15);
+}
+
+/* Subtle attribution — required by OSM/CARTO terms, styled tiny for hero */
+.leaflet-control-attribution {
+  background: rgba(30, 27, 75, 0.55) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 9px !important;
+  padding: 2px 6px !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border-top-left-radius: 4px !important;
+}
+.leaflet-control-attribution a {
+  color: rgba(165, 180, 252, 0.7) !important;
+  text-decoration: none !important;
+}
+.leaflet-control-attribution a:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ── MOBILE RESPONSIVE ────────────────────────────────────────────── */
+
+/* Prevent horizontal scroll globally */
+body { overflow-x: hidden; }
+
+/* ── Sidebar drawer ──────────────────────────────────────────────── */
+.sidebar-drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 999;
+}
+
+.topbar-burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  color: var(--text);
+  flex-shrink: 0;
+  padding: 0;
+  font-family: inherit;
+}
+.topbar-burger:hover { background: var(--bg); }
+
+@media (max-width: 1024px) {
+  /* Sidebar becomes a fixed overlay drawer */
+  .sidebar-wrap {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 24px -4px rgba(15, 23, 42, 0.2);
+    width: 280px !important;
+    overflow-y: auto;
+  }
+  .sidebar-wrap.mob-open {
+    transform: translateX(0);
+  }
+  .sidebar-drawer-backdrop.mob-open {
+    display: block;
+  }
+  /* Burger visible, breadcrumb + search hidden */
+  .topbar-burger { display: flex; }
+  .topbar-breadcrumb { display: none !important; }
+  .topbar-search { display: none !important; }
+}
+
+/* ── Layout fixes ────────────────────────────────────────────────── */
+.grid-main > div {
+  min-width: 0;
+}
+
+/* ── Grid collapse — 2-col → 1-col on tablet/mobile ─────────────── */
+@media (max-width: 1024px) {
+  .grid-main { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* ── KPI / metrics 4-col → 2×2 on mobile ────────────────────────── */
+@media (max-width: 768px) {
+  .kpi-grid { grid-template-columns: 1fr 1fr !important; }
+}
+
+/* ── Marathon card grid: 3-col → 2-col → 1-col ──────────────────── */
+@media (max-width: 1024px) {
+  .marathon-grid { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 640px) {
+  .marathon-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ── Page outer padding ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .page-pad { padding-left: 16px !important; padding-right: 16px !important; }
+}
+
+/* ── Hero card breakdown panel — stack below on mobile ──────────── */
+@media (max-width: 768px) {
+  .hero-card-inner {
+    flex-direction: column !important;
+  }
+  .hero-breakdown {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border);
+    padding-left: 0 !important;
+    padding-top: 16px;
+    margin-top: 4px;
+  }
+}
+
+/* ── Current week scroll on mobile ──────────────────────────────── */
+.week-scroll-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.current-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .current-week-grid {
+    grid-template-columns: 1fr;
+    min-width: 0;
+  }
+  .week-scroll-wrap {
+    overflow-x: visible;
+  }
+}
+
+/* ── Workout drawer full-screen on mobile ────────────────────────── */
+@media (max-width: 768px) {
+  .workout-drawer { width: 100% !important; }
+}
+
+/* ── Modal responsive on mobile ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .modal-responsive {
+    width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    padding: 20px 16px !important;
+  }
+  .modal-responsive-body {
+    max-height: calc(90vh - 120px);
+    overflow-y: auto;
+  }
+}
+
+/* ── Page header flex wrap on mobile ─────────────────────────────── */
+@media (max-width: 768px) {
+  .page-header-row {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+  }
+  .page-header-row > div:last-child {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+}
+
+/* ── Filter bar wraps on mobile ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .filter-bar-wrap {
+    flex-wrap: wrap !important;
+    height: auto !important;
+  }
+  .hide-mob {
+    display: none !important;
+  }
+  .mob-wrap {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+  }
+}
+
+/* ── Predictions layout ──────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .predictions-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Footer mobile stack ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .app-footer {
+    padding: 14px 16px !important;
+    height: auto !important;
+  }
+  .app-footer-inner {
+    flex-direction: column !important;
+    gap: 10px !important;
+    align-items: center !important;
+    min-height: 0 !important;
+    text-align: center;
+  }
+  .app-footer-copy,
+  .app-footer-links {
+    flex: 0 0 auto !important;
+    justify-content: center !important;
+    text-align: center;
+  }
+  .app-footer-links {
+    gap: 14px !important;
+    flex-wrap: wrap;
+  }
+}
+
+/* ── Marathon card: compact horizontal on mobile ─────────────────── */
+/* ── Marathon catalog card on mobile ──────────────────────────────
+   Stay in COLUMN layout (matches desktop, but compacted). The previous
+   row-layout broke after the card body was wrapped in a <Link>: react-router
+   renders Link as <a>, so `.marathon-card > div:first-child` no longer
+   targeted the top strip — it accidentally targeted (and hid) the action
+   row. Keeping column avoids those nth-child landmines entirely.
+   Image stays on top (110px), then title + stats + CTA stacked. We hide
+   the elevation chart and difficulty bar on mobile to keep the card short
+   without losing the key data — full profile is one tap away on the detail
+   page. */
+@media (max-width: 768px) {
+  .marathon-card {
+    flex-direction: column !important;
+    min-height: auto !important;
+    height: auto !important;
+  }
+  .marathon-card-image {
+    width: 100% !important;
+    height: 110px !important;
+    min-height: 110px !important;
+    border-radius: 0 !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+  }
+  .marathon-card-content {
+    flex: 1 !important;
+    padding: 12px 14px !important;
+    width: auto !important;
+    gap: 6px !important;
+  }
+  /* Hide the per-km elevation chart (2nd child) — saves ~50px vertical
+     and the data is shown numerically in stats grid below. */
+  .marathon-card-content > div:nth-child(2) {
+    display: none !important;
+  }
+  /* Hide the difficulty gradient bar (4th child) — the verbal label
+     ("Равнинный/Холмистый/...") is already in the stats grid. */
+  .marathon-card-content > div:nth-child(4) {
+    display: none !important;
+  }
+  /* Action row at the bottom — tighter padding for mobile */
+  .marathon-card > div:last-child {
+    padding: 10px 14px 12px !important;
+  }
+}
+
+/* ── Activities toolbar wraps on mobile ──────────────────────────── */
+@media (max-width: 768px) {
+  .filter-bar-wrap {
+    row-gap: 8px !important;
+  }
+}
+
+/* ── Marathon catalog count + legend: stack on mobile for breathing room ── */
+@media (max-width: 640px) {
+  .marathon-count-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    row-gap: 6px !important;
+  }
+}
+
+/* ── Dashboard readiness card: remove fixed height on mobile ─────── */
+@media (max-width: 1024px) {
+  .readiness-card-wrap {
+    height: auto !important;
+  }
+}
+
+/* ── Featured hero: stack on mobile ─────────────────────────────── */
+@media (max-width: 768px) {
+  .featured-hero {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    min-height: 460px;
+  }
+  .featured-hero-visual {
+    height: 180px !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .featured-hero-info {
+    padding: 20px 18px !important;
+  }
+  .featured-hero-info h2 {
+    font-size: 26px !important;
+    letter-spacing: -0.6px !important;
+  }
+  .featured-hero-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Filter bar: slim on mobile ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .filter-bar-wrap {
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+  .filter-bar-search {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+  .filter-bar-divider { display: none !important; }
+  .filter-bar-months {
+    flex: 1 1 100% !important;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .filter-bar-months > button {
+    flex-shrink: 0 !important;
+  }
+  .filter-bar-custom  { display: none !important; }
+  .filter-bar-difficulty {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .filter-bar-difficulty button {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+  .filter-bar-sort {
+    flex: 1 1 100% !important;
+  }
+}
+
+/* ── Analysis grid: 3-col → 1-col on mobile ─────────────────────── */
+@media (max-width: 640px) {
+  .analysis-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .analysis-grid > div {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .analysis-grid > div:last-child {
+    border-bottom: none;
+  }
+}
+
+/* ── Dashboard: prevent card overflow on mobile ──────────────────── */
+@media (max-width: 1024px) {
+  .grid-main > div > .card,
+  .grid-main > div > div > .card {
+    min-width: 0;
+  }
+  .chart-card,
+  .readiness-card {
+    overflow: hidden;
+  }
+}
+
+/* ── Share modal: stack preview+controls on mobile ───────────────── */
+@media (max-width: 768px) {
+  .share-modal-content {
+    flex-direction: column !important;
+    width: 95vw !important;
+    height: auto !important;
+    max-height: 90vh !important;
+    border-radius: 16px !important;
+    overflow-y: auto !important;
+  }
+  .share-modal-preview {
+    flex: none !important;
+    width: 100% !important;
+    padding: 16px 16px 12px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #E7E5E4;
+    order: 0 !important;
+  }
+  .share-modal-controls {
+    flex: none !important;
+    width: 100% !important;
+    padding: 16px 16px 20px !important;
+    order: 1 !important;
+    overflow-y: visible !important;
+  }
+  .share-preview-frame {
+    max-width: 100% !important;
+    overflow: hidden;
+  }
+  /* Format chips (with new icons) might run out of horizontal space on
+     narrow phones — allow wrap so they break to a second row instead of
+     overflowing the modal. */
+  .share-modal-preview > div:last-child {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+/* ── Hero card root: allow height to grow on mobile ──────────────── */
+@media (max-width: 768px) {
+  .hero-card-root {
+    height: auto !important;
+    min-height: auto !important;
+    padding: 18px !important;
+  }
+}
+
+/* ── Chart card mobile ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .chart-card {
+    padding: 14px !important;
+  }
+  .chart-card > div:first-child {
+    flex-wrap: wrap !important;
+    gap: 8px;
+  }
+  .chart-period-buttons {
+    margin-left: 0 !important;
+  }
+}
+
+/* ── Activity stats row: 8-col → 2-col on mobile ─────────────────── */
+@media (max-width: 640px) {
+  .activity-stats-row {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .activity-stats-row > div {
+    padding: 10px 12px !important;
+  }
+}
+
+/* ── Activity hero map height on mobile ──────────────────────────── */
+@media (max-width: 640px) {
+  .activity-hero-map {
+    height: 280px !important;
+  }
+}
+
+/* ── Plan breadcrumb compact on mobile ───────────────────────────── */
+@media (max-width: 640px) {
+  .plan-breadcrumb {
+    flex-wrap: wrap;
+    font-size: 11px !important;
+  }
+  .plan-breadcrumb > span:first-child,
+  .plan-breadcrumb > svg:first-of-type {
+    display: none;
+  }
+}
+
+/* ── Plan meta row wrap on mobile ────────────────────────────────── */
+@media (max-width: 768px) {
+  .plan-meta-row {
+    flex-wrap: wrap;
+    gap: 6px 10px !important;
+    font-size: 11.5px !important;
+  }
+}
+
+/* ── Leaflet Controls Z-Index Fix ────────────────────────────────── */
+/* Leaflet controls default to z-index 1000. Lower it so sidebar overlays it. */
+.leaflet-top, .leaflet-bottom {
+  z-index: 800 !important;
+}
+
+/* ── Cinematic Hero Mobile Overrides ─────────────────────────────── */
+@media (max-width: 640px) {
+  /* Move wordmark slightly to fit better if needed, though top: 24 is ok */
+  .hero-wordmark {
+    top: 16px !important;
+    left: 20px !important;
+  }
+  
+  /* Stack position - move down and left */
+  .hero-stack {
+    left: 20px !important;
+    bottom: 24px !important;
+  }
+  
+  /* Make "EASY RUN" smaller and tighten spacing */
+  .hero-kind {
+    font-size: 11px !important;
+    margin-bottom: 8px !important;
+  }
+  
+  /* Reduce huge number size from 140px to 80px */
+  .hero-number {
+    font-size: 80px !important;
+    letter-spacing: -3px !important;
+  }
+  
+  /* Reduce unit size */
+  .hero-unit {
+    font-size: 20px !important;
+  }
+  
+  /* Subtext spacing */
+  .hero-subtext {
+    margin-top: 8px !important;
+    font-size: 11px !important;
+  }
+
+  /* Share button CTA placement - move to bottom right but compact */
+  .hero-share-cta {
+    right: 16px !important;
+    bottom: 24px !important;
+  }
+  
+  /* Reduce button size */
+  .hero-share-btn {
+    height: 30px !important;
+    padding: 0 10px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+  }
+  
+  .hero-share-btn svg {
+    width: 11px;
+    height: 11px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LANDING PAGE
+   ═══════════════════════════════════════════════════════════════════ */
+
+.landing-root {
+  min-height: 100vh;
+  background: #FAFAF9;
+  color: var(--text);
+}
+
+/* ── Nav ──────────────────────────────────────────────────────────── */
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 32px;
+  background: rgba(250, 250, 249, 0.85);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.landing-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.landing-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.landing-nav-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.landing-nav-link:hover {
+  color: var(--text);
+}
+
+.landing-nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.landing-hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 72px 32px 56px;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  align-items: center;
+  gap: 56px;
+  position: relative;
+}
+
+.landing-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1100px, 95vw);
+  height: 620px;
+  background: radial-gradient(ellipse 50% 50% at center top, rgba(79, 70, 229, 0.08), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.landing-hero-text {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--primary-2);
+  background: var(--primary-50);
+  padding: 6px 12px;
+  border-radius: 999px;
+  margin-bottom: 22px;
+}
+
+.landing-hero-title {
+  font-size: 54px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -1.5px;
+  color: var(--text);
+  margin: 0 0 20px;
+}
+
+.landing-hero-sub {
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 540px;
+  margin: 0 0 26px;
+}
+
+.landing-hero-ctas {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.landing-method-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.landing-method-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--primary-2);
+  background: var(--primary-50);
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(79, 70, 229, 0.14);
+}
+
+.landing-hero-trust {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.landing-hero-trust span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Hero Mockup Card ─────────────────────────────────────────────── */
+.landing-hero-mockup {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.landing-mockup-card {
+  position: relative;
+  z-index: 2;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 26px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 28px 52px -20px rgba(79, 70, 229, 0.22),
+    0 14px 28px -10px rgba(249, 112, 102, 0.10);
+}
+
+.landing-mockup-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.landing-mockup-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.landing-mockup-marathon {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.landing-mockup-pill {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.12);
+  padding: 4px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.landing-mockup-time {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -1.4px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.landing-mockup-pace {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.landing-mockup-divider {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 16px 0 14px;
+}
+
+.landing-mockup-breakdown-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.landing-mockup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--muted);
+  padding: 5px 0;
+}
+
+.landing-mockup-row-total {
+  color: var(--text);
+  padding-top: 6px;
+}
+
+.landing-mockup-glow {
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(ellipse 50% 45% at center, rgba(249, 112, 102, 0.10), transparent 70%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Numbers Strip ───────────────────────────────────────────────── */
+.landing-numbers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 48px 32px;
+}
+
+.landing-number-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.landing-number-value {
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+
+.landing-number-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.landing-number-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ── Sections (generic) ──────────────────────────────────────────── */
+.landing-section {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 88px 32px;
+}
+
+.landing-section-dark {
+  max-width: none;
+  background: var(--primary);
+  color: #fff;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.landing-section-dark .landing-section-head,
+.landing-section-dark .landing-steps {
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+
+.landing-section-head {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.landing-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--primary-2);
+  margin-bottom: 14px;
+}
+
+.landing-h2 {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1.15;
+  color: var(--text);
+  margin: 0 0 14px;
+}
+
+.landing-h2 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+.landing-section-sub {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ── Features ────────────────────────────────────────────────────── */
+.landing-features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.landing-feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.landing-feature-card:hover {
+  border-color: var(--primary-2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 28px -16px rgba(79, 70, 229, 0.18);
+}
+
+.landing-feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: var(--primary-50);
+  color: var(--primary-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.landing-feature-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 8px;
+  letter-spacing: -0.2px;
+}
+
+.landing-feature-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── How It Works ────────────────────────────────────────────────── */
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+.landing-step {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.landing-step-num {
+  display: inline-block;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -1px;
+  margin-bottom: 14px;
+}
+
+.landing-step-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 8px;
+}
+
+.landing-step-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+/* ── Comparison Table ────────────────────────────────────────────── */
+.landing-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.landing-compare {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.landing-compare th,
+.landing-compare td {
+  padding: 14px 18px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.landing-compare th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: #FAFAF9;
+  white-space: nowrap;
+}
+
+.landing-compare td.feat-col,
+.landing-compare th:first-child {
+  text-align: left;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.landing-compare .us-col {
+  background: rgba(79, 70, 229, 0.04);
+  font-weight: 600;
+  color: var(--primary-2);
+}
+
+.landing-compare tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── Pricing ─────────────────────────────────────────────────────── */
+.landing-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.landing-pricing-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px;
+  position: relative;
+}
+
+.landing-pricing-card-featured {
+  border-color: var(--primary-2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 16px 40px -16px rgba(79, 70, 229, 0.25);
+  transform: scale(1.02);
+}
+
+.landing-pricing-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  background: #FAFAF9;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  margin-bottom: 16px;
+  align-self: flex-start;
+}
+
+.landing-pricing-tag-featured {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.landing-pricing-name {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 14px;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.landing-pricing-price {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.landing-pricing-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 22px;
+  line-height: 1.4;
+}
+
+.landing-pricing-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  flex: 1;
+}
+
+.landing-pricing-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text);
+  padding: 6px 0;
+}
+
+/* ── FAQ ─────────────────────────────────────────────────────────── */
+.landing-faq-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.landing-faq-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 200ms ease;
+}
+
+.landing-faq-item.open {
+  border-color: var(--primary-2);
+}
+
+.landing-faq-q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  background: transparent;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.landing-faq-a {
+  padding: 0 22px 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ── Final CTA ───────────────────────────────────────────────────── */
+.landing-final-cta {
+  background: var(--primary);
+  padding: 80px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-final-cta::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, rgba(249, 112, 102, 0.15), transparent 60%);
+  pointer-events: none;
+}
+
+.landing-final-inner {
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+  position: relative;
+}
+
+.landing-final-sub {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────── */
+.landing-footer {
+  background: #1A1A1A;
+  color: var(--muted-2);
+  padding: 64px 32px 28px;
+}
+
+.landing-footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  gap: 40px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.landing-footer-brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.landing-footer-head {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.landing-footer-col a {
+  font-size: 13px;
+  color: var(--muted-2);
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+.landing-footer-col a:hover {
+  color: #fff;
+}
+
+.landing-footer-bottom {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 24px;
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
+/* ── Tablet (≤960px) ─────────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .landing-nav-links {
+    display: none;
+  }
+  .landing-hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 44px;
+    padding-top: 56px;
+  }
+  .landing-hero-title {
+    font-size: 44px;
+  }
+  .landing-hero-sub {
+    font-size: 16px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .landing-hero-ctas,
+  .landing-hero-trust,
+  .landing-method-badges {
+    justify-content: center;
+  }
+  .landing-mockup-card {
+    margin: 0 auto;
+    max-width: 380px;
+  }
+  .landing-numbers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .landing-features-grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-steps {
+    grid-template-columns: 1fr;
+  }
+  .landing-pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .landing-pricing-card-featured {
+    transform: none;
+  }
+  .landing-footer-inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+}
+
+/* ── Mobile (≤640px) ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .landing-nav {
+    padding: 12px 16px;
+  }
+  .landing-nav-cta .btn:not(.btn-coral) {
+    display: none;
+  }
+  .landing-hero {
+    padding: 48px 20px 32px;
+    gap: 36px;
+  }
+  .landing-hero-title {
+    font-size: 34px;
+    letter-spacing: -1px;
+  }
+  .landing-hero-sub {
+    font-size: 15px;
+  }
+  .landing-hero-ctas .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .landing-mockup-card {
+    padding: 20px;
+    max-width: 100%;
+  }
+  .landing-mockup-time {
+    font-size: 38px;
+  }
+  .landing-method-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  .landing-numbers {
+    padding: 32px 16px;
+    gap: 12px;
+  }
+  .landing-number-value {
+    font-size: 30px;
+  }
+  .landing-section {
+    padding: 56px 20px;
+  }
+  .landing-section-dark .landing-section-head,
+  .landing-section-dark .landing-steps {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .landing-h2 {
+    font-size: 28px;
+  }
+  .landing-section-head {
+    margin-bottom: 36px;
+  }
+  .landing-feature-card,
+  .landing-step,
+  .landing-pricing-card {
+    padding: 22px;
+  }
+  .landing-faq-q {
+    font-size: 14px;
+    padding: 16px 18px;
+  }
+  .landing-faq-a {
+    font-size: 13px;
+    padding: 0 18px 18px;
+  }
+  .landing-final-cta {
+    padding: 56px 20px;
+  }
+  .landing-footer {
+    padding: 48px 20px 24px;
+  }
+  .landing-footer-inner {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .landing-footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

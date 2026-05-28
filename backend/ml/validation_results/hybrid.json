@@ -1,0 +1,37 @@
+{
+  "dataset": "MarathonData.csv \u2014 80/20 split, random_state=42",
+  "n_total": 81,
+  "n_train": 64,
+  "n_test": 17,
+  "warning": "Only 81 total rows. Test set is 17 runners \u2014 all percentage figures have very wide confidence intervals.",
+  "riegel_baseline": {
+    "mae_min": 6.51,
+    "rmse_min": 8.08,
+    "r2": 0.8808,
+    "median_ae_min": 5.59,
+    "within_5min_pct": 41.2,
+    "within_10min_pct": 88.2,
+    "within_15min_pct": 94.1
+  },
+  "daniels_baseline": {
+    "mae_min": 6.17,
+    "rmse_min": 7.41,
+    "r2": 0.8998,
+    "median_ae_min": 5.67,
+    "within_5min_pct": 41.2,
+    "within_10min_pct": 88.2,
+    "within_15min_pct": 94.1
+  },
+  "hybrid_with_ml": {
+    "mae_min": 4.67,
+    "rmse_min": 5.52,
+    "r2": 0.9444,
+    "median_ae_min": 4.22,
+    "within_5min_pct": 64.7,
+    "within_10min_pct": 94.1,
+    "within_15min_pct": 100.0
+  },
+  "improvement_pct_vs_daniels": 24.3,
+  "improvement_pct_vs_riegel": 28.3,
+  "speedup_vs_riegel": 1.39
+}
