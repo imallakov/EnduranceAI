@@ -13,31 +13,53 @@ echo "=========================================="
 
 cd $APP_DIR
 
+# Capture current commit to compare changes later
+OLD_HEAD=$(git rev-parse HEAD)
+
 # 1. Pull the latest code from GitHub
 echo "-> Pulling latest code from GitHub..."
 git pull origin main
+
+NEW_HEAD=$(git rev-parse HEAD)
 
 # Fix ownership of any new files downloaded by git
 chown -R $APP_USER:$APP_USER $APP_DIR
 
 
+
 # 2. Update Backend
 echo "-> Updating Backend..."
-sudo -u $APP_USER bash -c '
+sudo -u $APP_USER bash -c "
     cd backend
     source venv/bin/activate
-    pip install -r requirements.txt
+    
+    # Only install python dependencies if requirements.txt changed
+    if git diff --name-only $OLD_HEAD $NEW_HEAD | grep -q 'backend/requirements.txt'; then
+        echo '-> requirements.txt changed. Installing Python dependencies...'
+        pip install -r requirements.txt
+    else
+        echo '-> No Python dependency changes detected. Skipping pip install.'
+    fi
+    
     python manage.py migrate --noinput
     python manage.py collectstatic --noinput --clear
-'
+"
 
 # 3. Update Frontend
 echo "-> Updating Frontend..."
-sudo -u $APP_USER bash -c '
+sudo -u $APP_USER bash -c "
     cd frontend
-    npm install
+    
+    # Only run npm install if package.json or package-lock.json changed
+    if git diff --name-only $OLD_HEAD $NEW_HEAD | grep -qE 'frontend/package\.json|frontend/package-lock\.json'; then
+        echo '-> package.json changed. Installing NPM dependencies...'
+        npm install
+    else
+        echo '-> No NPM dependency changes detected. Skipping npm install.'
+    fi
+    
     npm run build
-'
+"
 
 # 4. Restart Services
 echo "-> Restarting Services..."
