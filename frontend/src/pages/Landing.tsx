@@ -7,7 +7,7 @@ import {
   Check, X, ChevronDown, Sparkles, Mountain, BarChart3,
 } from 'lucide-react';
 
-const GITHUB_URL = 'https://github.com/imallakov/enduranceai';
+const GITHUB_URL = 'https://github.com/imallakov/EnduranceAI';
 
 /* ────────────────────────────────────────────────────────────────── */
 /*  Subcomponents                                                     */
@@ -390,7 +390,7 @@ const FAQ: React.FC = () => (
       />
       <FAQItem
         q="Can I see the source code?"
-        a={<>Yes. The full backend (Django) and frontend (React) source code lives on GitHub: <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-2)' }}>github.com/imallakov/enduranceai</a>. MIT-licensed. Audit our ML, fork it, or self-host.</>}
+        a={<>Yes. The full backend (Django) and frontend (React) source code lives on GitHub: <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-2)' }}>github.com/imallakov/EnduranceAI</a>. MIT-licensed. Audit our ML, fork it, or self-host.</>}
       />
       <FAQItem
         q="Why should I trust a new product over Garmin or Strava?"
