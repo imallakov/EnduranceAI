@@ -232,9 +232,13 @@ class MarathonDetailView(generics.RetrieveAPIView):
     """GET /api/marathons/{id}/"""
     serializer_class = MarathonSerializer
     permission_classes = [IsAuthenticated]
-    # Annotate so serializer's get_results_count uses the cached value
-    # instead of issuing a second COUNT(*) query.
-    queryset = Marathon.objects.annotate(_results_count=Count('results'))
+
+    def get_queryset(self):
+        # Annotate so serializer's get_results_count uses the cached value
+        # instead of issuing a second COUNT(*) query.
+        return Marathon.objects.filter(
+            Q(is_custom=False) | Q(created_by=self.request.user)
+        ).annotate(_results_count=Count('results'))
 
 
 class MarathonResultsView(generics.ListAPIView):
@@ -243,7 +247,10 @@ class MarathonResultsView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = MarathonResult.objects.filter(marathon_id=self.kwargs['pk'])
+        qs = MarathonResult.objects.filter(
+            Q(marathon__is_custom=False) | Q(marathon__created_by=self.request.user),
+            marathon_id=self.kwargs['pk']
+        )
         year = self.request.query_params.get('year')
         age_group = self.request.query_params.get('age_group')
         sex = self.request.query_params.get('sex')
@@ -262,7 +269,10 @@ class MarathonWeatherView(APIView):
 
     def get(self, request, pk):
         try:
-            marathon = Marathon.objects.get(pk=pk)
+            marathon = Marathon.objects.get(
+                Q(is_custom=False) | Q(created_by=request.user),
+                pk=pk
+            )
         except Marathon.DoesNotExist:
             return Response({'error': 'Not found'}, status=404)
         return Response({'avg_temp_by_month': marathon.avg_temp_by_month})
@@ -316,7 +326,10 @@ class PredictionCreateView(APIView):
         marathon = None
         if d.get('marathon_id'):
             try:
-                marathon = Marathon.objects.get(id=d['marathon_id'])
+                marathon = Marathon.objects.get(
+                    Q(is_custom=False) | Q(created_by=request.user),
+                    id=d['marathon_id']
+                )
             except Marathon.DoesNotExist:
                 return Response({'error': 'Marathon not found'}, status=404)
         else:
