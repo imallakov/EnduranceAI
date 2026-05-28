@@ -17,6 +17,10 @@ cd $APP_DIR
 echo "-> Pulling latest code from GitHub..."
 git pull origin main
 
+# Fix ownership of any new files downloaded by git
+chown -R $APP_USER:$APP_USER $APP_DIR
+
+
 # 2. Update Backend
 echo "-> Updating Backend..."
 sudo -u $APP_USER bash -c '
