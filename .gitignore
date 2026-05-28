@@ -50,3 +50,10 @@ backend/ml/data/
 *.gpx
 *.fit
 !backend/tests/fixtures/
+
+# Design and Documentation
+design-*/
+docs/
+EnduranceAI_TZ.md
+EnduranceAI_TZ_v3.md
+opus_audit_stages_1_2.md
