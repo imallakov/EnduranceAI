@@ -80,9 +80,14 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
 
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleConnect = async () => {
+    if (!showWarning) {
+      setShowWarning(true);
+      return;
+    }
     try {
       await startStravaConnect();
     } catch {
@@ -183,20 +188,55 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
           <p style={{ margin: 0, fontSize: 11, color: 'var(--muted)' }}>
             {t.strava.compatibleWith}
           </p>
-          <button
-            onClick={handleConnect}
-            style={{
-              alignSelf: 'flex-start',
-              background: STRAVA_ORANGE, color: '#fff',
-              border: 'none', borderRadius: 8, padding: '8px 16px',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              transition: 'opacity 120ms',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            {t.strava.connectArrow}
-          </button>
+          {showWarning ? (
+            <div style={{
+              background: '#fef2f2', border: '1px solid #fca5a5',
+              padding: '12px 14px', borderRadius: 8, fontSize: 12.5,
+              color: '#991b1b', lineHeight: 1.45, marginTop: 4,
+            }}>
+              <strong style={{ display: 'block', marginBottom: 4 }}>{t.strava.warningImportant}</strong>
+              {t.strava.warningBody}
+              <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
+                <button
+                  onClick={handleConnect}
+                  style={{
+                    background: STRAVA_ORANGE, color: '#fff',
+                    border: 'none', borderRadius: 6, padding: '6px 12px',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {t.strava.warningContinue}
+                </button>
+                <button
+                  onClick={() => setShowWarning(false)}
+                  style={{ 
+                    background: 'transparent', border: 'none', 
+                    fontSize: 12, color: '#991b1b', cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
+                >
+                  {t.strava.cancel}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnect}
+              style={{
+                alignSelf: 'flex-start',
+                background: STRAVA_ORANGE, color: '#fff',
+                border: 'none', borderRadius: 8, padding: '8px 16px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                transition: 'opacity 120ms',
+                marginTop: 4,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              {t.strava.connectArrow}
+            </button>
+          )}
+
           <div style={{ marginTop: 4 }}>
             <StravaBadge />
           </div>

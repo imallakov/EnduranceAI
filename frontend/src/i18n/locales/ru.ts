@@ -460,6 +460,10 @@ export const ru: Translations = {
     connectionFailed: 'Не удалось подключить Strava:',
     syncStatusFailed: 'Ошибка проверки статуса синхронизации.',
     connectFailed: 'Не удалось инициировать подключение к Strava.',
+    warningImportant: '⚠️ Внимание',
+    warningBody: 'Strava требует явного разрешения на чтение ваших тренировок. На следующем экране вы ОБЯЗАТЕЛЬНО должны поставить галочку "View data about your private activities", иначе подключение не удастся.',
+    warningContinue: 'Я понимаю, продолжить →',
+    cancel: 'Отмена',
   },
   settings: {
     title: 'Настройки',

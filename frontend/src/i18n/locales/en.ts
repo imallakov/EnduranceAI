@@ -458,6 +458,10 @@ export const en = {
     connectionFailed: 'Strava connection failed:',
     syncStatusFailed: 'Sync status check failed.',
     connectFailed: 'Failed to initiate Strava connection.',
+    warningImportant: '⚠️ Important',
+    warningBody: 'Strava requires you to explicitly grant permission to read your activities. On the next screen, you MUST check the box for "View data about your private activities", otherwise the connection will fail.',
+    warningContinue: 'I understand, continue →',
+    cancel: 'Cancel',
   },
   settings: {
     title: 'Settings',
