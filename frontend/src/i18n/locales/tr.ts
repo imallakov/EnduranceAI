@@ -460,6 +460,10 @@ export const tr: Translations = {
     connectionFailed: 'Strava bağlantısı başarısız:',
     syncStatusFailed: 'Senkronizasyon durum kontrolü başarısız.',
     connectFailed: 'Strava bağlantısı başlatılamadı.',
+    warningImportant: '⚠️ Önemli',
+    warningBody: 'Strava, aktivitelerinizi okumak için açık izin vermenizi gerektirir. Bir sonraki ekranda "View data about your private activities" kutusunu İŞARETLEMELİSİNİZ, aksi takdirde bağlantı başarısız olur.',
+    warningContinue: 'Anlıyorum, devam et →',
+    cancel: 'İptal',
   },
   settings: {
     title: 'Ayarlar',
