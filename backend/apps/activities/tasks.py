@@ -158,7 +158,7 @@ def recalculate_user_metrics(user_id: str):
     from datetime import timedelta
     ninety_ago = date.today() - timedelta(days=90)
     recent = activities.filter(
-        start_time__date__gte=ninety_ago,
+        start_time__gte=ninety_ago,
         distance_km__gte=5,
     ).order_by('-vdot_estimate').first()
 

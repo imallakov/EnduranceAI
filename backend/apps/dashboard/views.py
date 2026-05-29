@@ -48,7 +48,7 @@ class DashboardView(APIView):
             from ml.src.formulas import race_readiness_score
             from apps.races.views import compute_readiness_inputs
             ninety_ago = date.today() - timedelta(days=90)
-            recent = Activity.objects.filter(user=user, is_valid=True, start_time__date__gte=ninety_ago)
+            recent = Activity.objects.filter(user=user, is_valid=True, start_time__gte=ninety_ago)
             weeks_with_runs = len(set(a.start_time.isocalendar()[:2] for a in recent))
             avg_weekly_km, vdot_delta_6w, long_runs_pct = compute_readiness_inputs(user)
             race_readiness = race_readiness_score(
@@ -98,10 +98,10 @@ class DashboardView(APIView):
         eight_weeks_ago = date.today() - timedelta(weeks=8)
         from django.db.models import Sum, Avg
         weekly_km_current = (Activity.objects
-                             .filter(user=user, is_valid=True, start_time__date__gte=week_start)
+                             .filter(user=user, is_valid=True, start_time__gte=week_start)
                              .aggregate(s=Sum('distance_km'))['s'] or 0)
         weekly_km_avg_8w = (Activity.objects
-                            .filter(user=user, is_valid=True, start_time__date__gte=eight_weeks_ago)
+                            .filter(user=user, is_valid=True, start_time__gte=eight_weeks_ago)
                             .aggregate(s=Sum('distance_km'))['s'] or 0)
         weekly_km_avg_8w = round(float(weekly_km_avg_8w) / 8, 1)
 

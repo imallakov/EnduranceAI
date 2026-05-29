@@ -26,15 +26,15 @@ def compute_readiness_inputs(user):
     sixteen_weeks_ago = date.today() - timedelta(weeks=16)
 
     avg_weekly_km = float(
-        Activity.objects.filter(user=user, is_valid=True, start_time__date__gte=eight_weeks_ago)
+        Activity.objects.filter(user=user, is_valid=True, start_time__gte=eight_weeks_ago)
         .aggregate(s=Sum('distance_km'))['s'] or 0
     ) / 8
 
     vdot_6w_ago = (
         Activity.objects
         .filter(user=user, is_valid=True, distance_km__gte=5,
-                start_time__date__lt=six_weeks_ago,
-                start_time__date__gte=sixteen_weeks_ago)
+                start_time__lt=six_weeks_ago,
+                start_time__gte=sixteen_weeks_ago)
         .aggregate(best=Max('vdot_estimate'))['best']
     )
     vdot_now = float(user.current_vdot or 0)
@@ -43,7 +43,7 @@ def compute_readiness_inputs(user):
     long_runs = Activity.objects.filter(
         user=user, is_valid=True,
         distance_km__gte=18,
-        start_time__date__gte=sixteen_weeks_ago,
+        start_time__gte=sixteen_weeks_ago,
     ).count()
     long_runs_completed_pct = min(1.0, long_runs / 12)
 
@@ -373,7 +373,7 @@ class PredictionCreateView(APIView):
         if (user.current_tsb is not None and user.training_weeks >= 4):
             from apps.activities.models import Activity
             ninety_ago = date.today() - timedelta(days=90)
-            recent = Activity.objects.filter(user=user, is_valid=True, start_time__date__gte=ninety_ago)
+            recent = Activity.objects.filter(user=user, is_valid=True, start_time__gte=ninety_ago)
             weeks_with_runs = len(set(a.start_time.isocalendar()[:2] for a in recent))
             avg_weekly_km, vdot_delta_6w, long_runs_pct = compute_readiness_inputs(user)
             readiness = calc_readiness(
