@@ -153,6 +153,9 @@ STRAVA_REDIRECT_URI = config(
     default='http://localhost:8000/api/integrations/strava/callback/',
 )
 
+# Frontend URL
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
+
 # ML models path
 ML_MODELS_DIR = BASE_DIR / 'ml' / 'models'
 

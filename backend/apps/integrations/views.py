@@ -11,10 +11,11 @@ from rest_framework import status
 from .models import StravaConnection
 from . import strava_client
 
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 
-FRONTEND_BASE = 'http://localhost:5173'
-
+FRONTEND_BASE = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
 
 _ALLOWED_REDIRECT_PATHS = {'/settings', '/onboarding'}
 
