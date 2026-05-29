@@ -69,6 +69,11 @@ class StravaCallbackView(APIView):
             logger.error("Strava code exchange failed: %s", exc)
             return HttpResponseRedirect(f'{FRONTEND_BASE}{redirect_path}?strava=error&message=exchange_failed')
 
+        # Validate that the user granted activity read permissions
+        granted_scope = token_data.get('scope', '')
+        if 'activity:read' not in granted_scope and 'activity:read_all' not in granted_scope:
+            return HttpResponseRedirect(f'{FRONTEND_BASE}{redirect_path}?strava=error&message=missing_permissions')
+
         athlete = token_data.get('athlete') or {}
         expires_at = datetime.fromtimestamp(token_data['expires_at'], tz=timezone.utc)
         username = athlete.get('username') or athlete.get('firstname') or str(athlete.get('id', ''))
