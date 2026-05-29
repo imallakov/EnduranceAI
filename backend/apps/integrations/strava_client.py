@@ -23,6 +23,7 @@ def get_authorize_url(state: str) -> str:
         'redirect_uri': settings.STRAVA_REDIRECT_URI,
         'response_type': 'code',
         'scope': 'read,activity:read_all',
+        'approval_prompt': 'force',
         'state': state,
     }
     return f'{STRAVA_AUTH_URL}?{urlencode(params)}'
