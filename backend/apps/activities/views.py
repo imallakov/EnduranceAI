@@ -34,14 +34,27 @@ class ActivityListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Use raw timestamp comparison instead of __date lookup. The __date
+        # lookup forces PostgreSQL to cast start_time::date for every row,
+        # which bypasses the timestamptz index on start_time and degenerates
+        # to a sequential scan. Building boundary datetimes preserves the
+        # index lookup (range scan on a B-tree index).
+        from datetime import datetime, time, timedelta, timezone as tz
         qs = Activity.objects.filter(user=self.request.user)
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
         min_km = self.request.query_params.get('min_km')
         if date_from:
-            qs = qs.filter(start_time__date__gte=parse_date(date_from))
+            d = parse_date(date_from)
+            if d:
+                qs = qs.filter(start_time__gte=datetime.combine(d, time.min, tzinfo=tz.utc))
         if date_to:
-            qs = qs.filter(start_time__date__lte=parse_date(date_to))
+            d = parse_date(date_to)
+            if d:
+                # End-of-day boundary: use start of NEXT day with strict < so
+                # we include the whole `date_to` day without timezone surprises.
+                next_day = d + timedelta(days=1)
+                qs = qs.filter(start_time__lt=datetime.combine(next_day, time.min, tzinfo=tz.utc))
         if min_km:
             qs = qs.filter(distance_km__gte=float(min_km))
         return qs

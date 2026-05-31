@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta, timezone as tz
 from django.db.models import Avg
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,6 +7,14 @@ from rest_framework.permissions import IsAuthenticated
 from .models import DailyMetrics
 from apps.activities.models import Activity
 from ml.src.formulas import vdot_to_paces, format_pace
+
+
+def _date_to_dt(d):
+    """Convert a date to a UTC midnight datetime so we can filter Activity
+    .start_time (timestamptz) without forcing a per-row ::date cast that kills
+    the index. All three usages below pass a `date` from `date.today() -
+    timedelta(weeks=N)`; we want "anything from midnight of that day onward"."""
+    return datetime.combine(d, time.min, tzinfo=tz.utc)
 
 
 class CurrentMetricsView(APIView):
@@ -53,7 +61,7 @@ class VdotHistoryView(APIView):
         cutoff = date.today() - timedelta(weeks=26)
         activities = (Activity.objects
                       .filter(user=request.user, is_valid=True,
-                              start_time__date__gte=cutoff,
+                              start_time__gte=_date_to_dt(cutoff),
                               vdot_estimate__isnull=False)
                       .order_by('start_time'))
         # Group by ISO week
@@ -75,7 +83,7 @@ class HREfficiencyView(APIView):
         cutoff = date.today() - timedelta(weeks=26)
         activities = (Activity.objects
                       .filter(user=request.user, is_valid=True,
-                              start_time__date__gte=cutoff,
+                              start_time__gte=_date_to_dt(cutoff),
                               avg_hr__isnull=False,
                               avg_pace_sec_per_km__isnull=False)
                       .order_by('start_time'))
@@ -102,7 +110,7 @@ class ZonesDistributionView(APIView):
         weeks = int(request.query_params.get('weeks', 8))
         cutoff = date.today() - timedelta(weeks=weeks)
         activities = Activity.objects.filter(
-            user=request.user, is_valid=True, start_time__date__gte=cutoff
+            user=request.user, is_valid=True, start_time__gte=_date_to_dt(cutoff)
         )
         totals = {'E': 0, 'M': 0, 'T': 0, 'I': 0, 'R': 0}
         for act in activities:
