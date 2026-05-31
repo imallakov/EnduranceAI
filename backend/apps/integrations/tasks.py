@@ -69,6 +69,12 @@ def process_strava_webhook(payload: dict):
         deleted = Activity.objects.filter(
             user=conn.user, external_strava_id=object_id,
         ).delete()
+        # Only re-run metrics if we actually removed something — otherwise
+        # this is just a delete event for an activity we never imported
+        # (non-Run type, too short, etc.) and recalc would be a waste.
+        if deleted[0]:
+            from apps.activities.tasks import recalculate_user_metrics
+            recalculate_user_metrics.delay(str(conn.user_id))
         return {'status': 'ok', 'action': 'deleted', 'count': deleted[0]}
 
     # create / update — fetch fresh from Strava

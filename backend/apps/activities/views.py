@@ -189,6 +189,19 @@ class ActivityDetailView(generics.RetrieveDestroyAPIView):
     def get_queryset(self):
         return Activity.objects.filter(user=self.request.user)
 
+    def perform_destroy(self, instance):
+        # Drop the row first, then trigger metrics recalc so dashboard
+        # (VDOT, CTL/ATL/TSB) and plan paces reflect reality. Done as
+        # delay() so the DELETE response isn't blocked on the recalc.
+        user_id = str(instance.user_id)
+        instance.delete()
+        from apps.activities.tasks import recalculate_user_metrics
+        try:
+            recalculate_user_metrics.delay(user_id)
+        except Exception:
+            # Celery down — fall back to inline so dashboard still updates
+            recalculate_user_metrics(user_id)
+
 
 class ActivityMapView(APIView):
     """GET /api/activities/{id}/map/ → GeoJSON LineString"""

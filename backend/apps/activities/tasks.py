@@ -111,6 +111,28 @@ def recalculate_user_metrics(user_id: str):
                   .order_by('start_time'))
 
     if not activities.exists():
+        # User deleted everything (or disconnected and then we got here via
+        # cascade). Zero out all cached metrics so the dashboard reflects
+        # reality instead of stale VDOT/CTL. Also reset plan-adaptation
+        # baselines so the next imported activity re-anchors L1 cleanly.
+        DailyMetrics.objects.filter(user_id=user_id).delete()
+        User.objects.filter(id=user_id).update(
+            current_vdot=None,
+            current_ctl=None,
+            current_atl=None,
+            current_tsb=None,
+            training_weeks=0,
+        )
+        try:
+            from apps.plans.models import TrainingPlan
+            TrainingPlan.objects.filter(user_id=user_id).update(
+                vdot_at_last_refresh=None,
+                last_paces_refresh_at=None,
+                last_recovery_week_number=None,
+                last_recovery_applied_at=None,
+            )
+        except Exception:
+            pass
         return
 
     threshold_hr = user.threshold_hr
