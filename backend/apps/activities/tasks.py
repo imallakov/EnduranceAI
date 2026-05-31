@@ -181,21 +181,24 @@ def recalculate_user_metrics(user_id: str):
         training_weeks=training_weeks,
     )
 
-    # L1 + L1.5 plan adaptation: after VDOT update, (1) refresh stale paces in
-    # the active plan, (2) auto-link new activities to their planned workouts.
-    # Both run quietly as side-effects; failure must not break the metrics
-    # recalc that the user explicitly triggered.
+    # L1 + L1.5 + L2 + L3 plan adaptation chain. Order matters:
+    #   1. L1: refresh paces if VDOT moved (so subsequent steps see fresh paces)
+    #   2. L1.5: link new activities to planned workouts + L2 scores at the
+    #            same step (scoring uses current paces, which are now fresh)
+    #   3. L3: detect missed-week pattern and apply recovery rewrite
+    # All run as silent side-effects; failures must not break metrics recalc.
     try:
         from apps.plans.models import TrainingPlan
-        from apps.plans.generator import refresh_plan_paces, auto_link_recent_activities
+        from apps.plans.generator import (
+            refresh_plan_paces, auto_link_recent_activities,
+            detect_and_apply_missed_week_recovery,
+        )
         active_plan = TrainingPlan.objects.filter(
             user_id=user_id, status='active',
         ).first()
         if active_plan:
-            # Re-fetch user with fresh current_vdot (the .update() above doesn't
-            # touch the local `user` variable from the earlier .get())
             user.refresh_from_db(fields=['current_vdot'])
-            active_plan.user = user  # pin the fresh user onto the plan instance
+            active_plan.user = user
 
             # L1: refresh paces if VDOT moved ≥2 pts
             refresh_result = refresh_plan_paces(active_plan)
@@ -207,14 +210,30 @@ def recalculate_user_metrics(user_id: str):
                     refresh_result['delta'], refresh_result['workouts_updated'],
                 )
 
-            # L1.5: link newly-arrived activities to their planned workouts
-            # and mark those workouts completed.
+            # L1.5 + L2: link activities and score them
             link_result = auto_link_recent_activities(user)
             if link_result.get('linked', 0) > 0:
                 import logging
                 logging.getLogger(__name__).info(
                     "Auto-linked %d activities to plan %s workouts",
                     link_result['linked'], active_plan.id,
+                )
+
+            # L3: missed-week recovery — re-fetch plan since L2 just modified
+            # workouts (we need the latest completion state for the prev-week
+            # ratio calculation)
+            active_plan.refresh_from_db()
+            active_plan.user = user
+            recovery_result = detect_and_apply_missed_week_recovery(active_plan)
+            if recovery_result.get('applied'):
+                import logging
+                logging.getLogger(__name__).info(
+                    "Applied recovery week %s to plan %s: %d workouts rewritten "
+                    "(prev week %d/%d missed, ratio %s)",
+                    recovery_result['week_number'], active_plan.id,
+                    recovery_result['rewritten_workouts'],
+                    recovery_result['prev_week_missed'], recovery_result['prev_week_total'],
+                    recovery_result['miss_ratio'],
                 )
     except Exception as e:
         import logging

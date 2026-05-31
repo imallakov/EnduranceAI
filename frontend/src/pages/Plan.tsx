@@ -15,6 +15,8 @@ import GenerateModal from '../components/plan/GenerateModal';
 import EmptyPlanState from '../components/plan/EmptyPlanState';
 import ExportMenu from '../components/plan/ExportMenu';
 import PacesRefreshedBanner from '../components/plan/PacesRefreshedBanner';
+import RecoveryWeekBanner from '../components/plan/RecoveryWeekBanner';
+import GoalFeasibilityBanner from '../components/plan/GoalFeasibilityBanner';
 
 import { IconRefresh, IconChevDown, IconChevRight } from '../components/icons';
 import { useT, useLang } from '../i18n/context';
@@ -205,6 +207,16 @@ const Plan: React.FC = () => {
               set by backend (within 7 days of a refresh, VDOT moved ≥0.5 pts). */}
           {plan.paces_refreshed && (
             <PacesRefreshedBanner info={plan.paces_refreshed} t={t} />
+          )}
+
+          {/* L3 missed-week recovery banner — only on the recovered week itself */}
+          {plan.recovery_week && (
+            <RecoveryWeekBanner info={plan.recovery_week} t={t} />
+          )}
+
+          {/* L4 goal feasibility — persistent state banner above plan content */}
+          {plan.goal_feasibility && (
+            <GoalFeasibilityBanner info={plan.goal_feasibility} />
           )}
 
           {/* Phase strip */}

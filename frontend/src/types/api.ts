@@ -303,6 +303,10 @@ export interface PlanWorkout {
   activity: string | null;
   hr_min: number | null;
   hr_max: number | null;
+  // L2 performance feedback: populated when an Activity is linked.
+  actual_pace_sec: number | null;
+  actual_pace_formatted: string | null;
+  performance_score: number | null;  // -2..+2 or null
 }
 
 export interface PlanWeek {
@@ -351,6 +355,27 @@ export interface TrainingPlan {
     new_vdot: number;
     delta: number;       // signed, e.g. +3.5 means VDOT grew by 3.5 pts
     refreshed_at: string;
+  } | null;
+  /** L2 aggregate: rolling performance signal. Null when <3 scored workouts. */
+  performance_summary: {
+    total_scored: number;
+    avg_score: number;       // -2 to +2
+    consistency_pct: number; // 0-100, % of last N workouts that hit zone or better
+  } | null;
+  /** L3 missed-week recovery: present when current week was auto-rewritten. */
+  recovery_week: {
+    week_number: number;
+    applied_at: string;
+  } | null;
+  /** L4 goal feasibility: projected marathon time given current VDOT vs
+   *  the target the user set. Null when target_time_sec or VDOT missing. */
+  goal_feasibility: {
+    projected_time_sec: number;
+    target_time_sec: number;
+    delta_sec: number;            // signed: positive = projected slower than target
+    status: 'ahead' | 'on_track' | 'slightly_behind' | 'behind';
+    vdot_used: number;
+    course_coeff_used: number;
   } | null;
 }
 

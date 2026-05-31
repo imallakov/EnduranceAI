@@ -19,6 +19,12 @@ class TrainingPlan(models.Model):
     # user's fitness changed enough (≥2 VDOT pts) to make stale paces.
     vdot_at_last_refresh = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     last_paces_refresh_at = models.DateTimeField(null=True, blank=True)
+    # L3 missed-week recovery: stores week_number of the LATEST week that was
+    # rewritten to recovery phase due to missed-workouts pattern. Null means
+    # no recovery rewrite has happened yet. Used to prevent re-applying on the
+    # same week and to render the L3 banner.
+    last_recovery_week_number = models.SmallIntegerField(null=True, blank=True)
+    last_recovery_applied_at = models.DateTimeField(null=True, blank=True)
     days_per_week = models.SmallIntegerField(default=4)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -74,6 +80,18 @@ class PlanWorkout(models.Model):
     activity = models.ForeignKey(
         'activities.Activity', on_delete=models.SET_NULL, null=True, blank=True
     )
+    # L2 performance feedback: populated when an Activity links to this workout.
+    # Cached here (not derived from FK on every read) because the comparison
+    # only makes sense against the paces that were planned AT THE TIME of the
+    # run — if L1 later refreshes paces, we still want the original judgement.
+    actual_pace_sec = models.IntegerField(null=True, blank=True)
+    # -2 = much off (e.g. easy run too fast, or tempo collapse)
+    # -1 = moderately off
+    #  0 = in zone (in the planned pace window or appropriately so)
+    # +1 = slightly favorable (e.g. interval comfortably faster than target)
+    # +2 = noticeably ahead of plan in a good way (only for quality work)
+    # Null until the workout is completed AND a linked activity is present.
+    performance_score = models.SmallIntegerField(null=True, blank=True)
 
     class Meta:
         db_table = 'plan_workouts'

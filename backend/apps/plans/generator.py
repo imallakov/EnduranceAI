@@ -238,6 +238,68 @@ def refresh_plan_paces(plan, force: bool = False, threshold: float = 2.0) -> dic
     }
 
 
+def score_workout_performance(actual_pace_sec, pace_min_sec, pace_max_sec, workout_type):
+    """
+    Score how well a runner executed a planned workout, returning -2…+2.
+
+    Different workout types reward different deviations:
+      - Easy/Long: running slower is fine, running too FAST is bad (means
+        you're undermining recovery / aerobic base-building)
+      - Tempo/Marathon-pace: need to hit the pace window precisely; both
+        too fast (anaerobic) and too slow (under-stimulus) are off
+      - Interval/Repetition: pace_min is a TARGET, beating it is good
+        (within limits — way too fast = different system worked, not
+        the prescribed VO2max/anaerobic capacity)
+      - Rest: no scoring (returns None)
+
+    None inputs return None — caller should handle.
+    """
+    if (actual_pace_sec is None or pace_min_sec is None or pace_max_sec is None
+            or workout_type == 'rest'):
+        return None
+
+    actual = float(actual_pace_sec)
+    target = float(pace_min_sec)  # the prescribed "ceiling" pace (faster end)
+    # Positive delta_pct = ran slower than target; negative = faster
+    delta_pct = (actual - target) / target
+
+    if workout_type in ('easy', 'long'):
+        # Slower than easy = OK (recovery still happens). Faster = bad.
+        if delta_pct < -0.07:   # ≥7% faster than easy-max → running easy too hard
+            return -2
+        if delta_pct < -0.03:
+            return -1
+        # Anywhere from spot-on to 15% slower = fine
+        if delta_pct <= 0.15:
+            return 0
+        return -1   # >15% slower = abnormally sluggish
+
+    if workout_type in ('tempo', 'marathon_pace'):
+        # Need to hit pace window precisely. Symmetric deviation scoring.
+        if abs(delta_pct) <= 0.025:    # ±2.5% = in zone
+            return 0
+        if abs(delta_pct) <= 0.06:
+            return -1 if delta_pct > 0 else +1   # slower = under-stim, faster = OK slightly
+        # Big deviation
+        if delta_pct > 0.06:
+            return -2   # collapsed
+        return -1   # too fast (anaerobic territory, not the right system)
+
+    if workout_type in ('interval', 'repetition'):
+        # Beating the target is good (within reason)
+        if delta_pct < -0.05:           # ≥5% faster than target
+            return +2 if delta_pct > -0.12 else +1   # too fast = different system
+        if delta_pct < -0.01:
+            return +1
+        if delta_pct <= 0.03:
+            return 0
+        if delta_pct <= 0.10:
+            return -1
+        return -2   # >10% slower = failed to hit prescribed intensity
+
+    return 0   # unknown type → neutral
+
+
 def auto_link_recent_activities(user) -> dict:
     """
     For each recently-uploaded activity that isn't yet attached to a planned
@@ -258,7 +320,7 @@ def auto_link_recent_activities(user) -> dict:
     Idempotency: already-linked activities and already-completed workouts are
     filtered out, so re-running this is safe (and used by signal handlers).
     """
-    from datetime import date, timedelta
+    from datetime import date, datetime, time, timedelta, timezone
     from apps.activities.models import Activity
     from .models import TrainingPlan, PlanWorkout
 
@@ -281,10 +343,16 @@ def auto_link_recent_activities(user) -> dict:
     week_ago = today - timedelta(days=7)
     horizon_start = max(active_plan.start_date, week_ago)
 
+    # Compare against datetime, not date — preserves PostgreSQL index usage on
+    # start_time. Casting (start_time__date__gte) forces a per-row ::date cast
+    # that bypasses the timestamptz index → full table scan on big histories.
+    horizon_dt = datetime.combine(horizon_start, time.min, tzinfo=timezone.utc)
+    tomorrow_dt = datetime.combine(today + timedelta(days=1), time.min, tzinfo=timezone.utc)
+
     recent = (Activity.objects
               .filter(user=user, is_valid=True,
-                      start_time__date__gte=horizon_start,
-                      start_time__date__lte=today)
+                      start_time__gte=horizon_dt,
+                      start_time__lt=tomorrow_dt)
               .exclude(id__in=linked_ids)
               .order_by('start_time'))
 
@@ -332,10 +400,140 @@ def auto_link_recent_activities(user) -> dict:
         if best is not None:
             best.activity = act
             best.completed = True
-            best.save(update_fields=['activity', 'completed'])
+            # L2: capture performance at link time. Using the workout's
+            # CURRENT pace_min/pace_max (which reflect the latest VDOT via L1)
+            # so the score represents "did you hit the target asked of you".
+            best.actual_pace_sec = (
+                int(round(float(act.avg_pace_sec_per_km)))
+                if act.avg_pace_sec_per_km else None
+            )
+            best.performance_score = score_workout_performance(
+                best.actual_pace_sec,
+                best.pace_min_sec, best.pace_max_sec,
+                best.workout_type,
+            )
+            best.save(update_fields=[
+                'activity', 'completed', 'actual_pace_sec', 'performance_score',
+            ])
             linked_count += 1
 
     return {'linked': linked_count, 'plan_id': str(active_plan.id)}
+
+
+def detect_and_apply_missed_week_recovery(plan) -> dict:
+    """
+    L3: if the user missed ≥50% of quality workouts in the immediately-previous
+    week, rewrite the CURRENT week's quality work to easy runs and reduce its
+    long-run distance.
+
+    "Missed" = workout's planned date is in the past, type != 'rest', and
+    completed = False. We only count non-rest workouts because skipping a
+    planned rest day isn't a missed workout.
+
+    Edge cases handled:
+      - First week of plan → can't have a "previous week", skip
+      - Race week (last week) → never auto-rewrite (taper is delicate)
+      - Already recovered this week → don't re-apply
+      - Plan has no quality workouts in the previous week → no signal
+
+    Why CURRENT-week rewrite vs NEXT-week: most "I missed a week" detections
+    happen mid-week when the user opens the app. Rewriting the current week
+    immediately helps; waiting for next Monday is too late to provide the
+    intended recovery.
+    """
+    from datetime import date, timedelta
+    from django.utils import timezone
+    from .models import PlanWeek, PlanWorkout
+    import math
+
+    today = date.today()
+    days_since_start = (today - plan.start_date).days
+    if days_since_start < 7:
+        return {'applied': False, 'reason': 'first_week'}
+
+    current_week_num = days_since_start // 7 + 1
+    prev_week_num = current_week_num - 1
+    total_weeks = plan.weeks.count()
+
+    if current_week_num >= total_weeks:
+        # Race week or beyond — never touch taper
+        return {'applied': False, 'reason': 'race_week_or_past'}
+
+    if plan.last_recovery_week_number == current_week_num:
+        return {'applied': False, 'reason': 'already_recovered_this_week'}
+
+    try:
+        prev_week = PlanWeek.objects.get(plan=plan, week_number=prev_week_num)
+    except PlanWeek.DoesNotExist:
+        return {'applied': False, 'reason': 'no_prev_week'}
+
+    prev_workouts = list(prev_week.workouts.exclude(workout_type='rest'))
+    if not prev_workouts:
+        return {'applied': False, 'reason': 'no_quality_in_prev_week'}
+
+    missed = [w for w in prev_workouts if not w.completed]
+    miss_ratio = len(missed) / len(prev_workouts)
+
+    if miss_ratio < 0.5:
+        return {'applied': False, 'reason': 'enough_completed',
+                'miss_ratio': round(miss_ratio, 2)}
+
+    # Trigger recovery on current week.
+    current_week = PlanWeek.objects.filter(plan=plan, week_number=current_week_num).first()
+    if not current_week:
+        return {'applied': False, 'reason': 'current_week_not_found'}
+
+    user = plan.user
+    vdot = float(user.current_vdot or 40)
+    paces = vdot_to_paces(vdot)
+    easy_p_min, easy_p_max, easy_struct = _workout_paces('easy', paces, None)
+
+    # Rewrite logic:
+    #   - Already-completed workouts left untouched (history)
+    #   - Future quality (tempo/interval/repetition/marathon_pace): → easy, distance halved
+    #   - Long run: kept but distance scaled to 0.7
+    #   - Easy: kept as-is (already gentle)
+    rewritten = 0
+    for wo in current_week.workouts.filter(completed=False):
+        if wo.workout_type == 'rest':
+            continue
+        elif wo.workout_type in ('tempo', 'interval', 'repetition', 'marathon_pace'):
+            original_dist = float(wo.distance_km) if wo.distance_km else 8.0
+            wo.workout_type = 'easy'
+            wo.distance_km = round(max(4.0, original_dist * 0.5), 1)
+            wo.pace_min_sec = easy_p_min
+            wo.pace_max_sec = easy_p_max
+            wo.structure = easy_struct
+            wo.save(update_fields=['workout_type', 'distance_km', 'pace_min_sec',
+                                    'pace_max_sec', 'structure'])
+            rewritten += 1
+        elif wo.workout_type == 'long':
+            if wo.distance_km:
+                # Keep paces — long is already at easy/marathon zones
+                wo.distance_km = round(float(wo.distance_km) * 0.7, 1)
+                wo.save(update_fields=['distance_km'])
+                rewritten += 1
+        # 'easy' workouts left as-is
+
+    # Update plan's recorded total_km for the rewritten week (approximate)
+    new_total = sum(float(w.distance_km or 0) for w in current_week.workouts.all())
+    current_week.total_km = round(new_total, 1)
+    if not current_week.notes:
+        current_week.notes = 'Recovery week (auto-applied due to missed sessions in prior week)'
+    current_week.save(update_fields=['total_km', 'notes'])
+
+    plan.last_recovery_week_number = current_week_num
+    plan.last_recovery_applied_at = timezone.now()
+    plan.save(update_fields=['last_recovery_week_number', 'last_recovery_applied_at'])
+
+    return {
+        'applied': True,
+        'week_number': current_week_num,
+        'rewritten_workouts': rewritten,
+        'prev_week_missed': len(missed),
+        'prev_week_total': len(prev_workouts),
+        'miss_ratio': round(miss_ratio, 2),
+    }
 
 
 def _workout_paces(wtype: str, paces: dict, dist: float | None) -> tuple:
