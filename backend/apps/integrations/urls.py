@@ -5,6 +5,7 @@ from .views import (
     StravaStatusView,
     StravaSyncView,
     StravaDisconnectView,
+    StravaWebhookView,
 )
 
 urlpatterns = [
@@ -13,4 +14,5 @@ urlpatterns = [
     path('strava/status/', StravaStatusView.as_view()),
     path('strava/sync/', StravaSyncView.as_view()),
     path('strava/disconnect/', StravaDisconnectView.as_view()),
+    path('strava/webhook/', StravaWebhookView.as_view()),
 ]

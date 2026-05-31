@@ -9,6 +9,7 @@ import { apiClient } from '../api/client';
 import type { UserProfile, UploadStatusResponse } from '../types/api';
 import type { AxiosError } from 'axios';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import { useToast } from '../components/ToastProvider';
 import { useT, useLang } from '../i18n/context';
 
 const INPUT_STYLE: React.CSSProperties = {
@@ -345,6 +346,7 @@ const Settings: React.FC = () => {
   const t = useT();
   const { lang } = useLang();
   const { user, setUser } = useAuth();
+  const { showToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
   const { data: acceptances } = useUserAcceptances();
@@ -362,20 +364,30 @@ const Settings: React.FC = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Handle ?strava=connected / ?strava=error after OAuth redirect
+  // Handle ?strava=connected / ?strava=error after OAuth redirect.
+  // Errors come from backend as machine codes (missing_permissions, etc) —
+  // map them to localized, user-friendly messages and surface via global toast
+  // (top-right) instead of as a tiny red footer that users miss.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const stravaParam = params.get('strava');
     if (!stravaParam) return;
 
     if (stravaParam === 'connected') {
-      setSuccess(t.strava.connectedSuccess);
-      setTimeout(() => setSuccess(''), 5000);
+      showToast(t.strava.connectedSuccess, 'success');
     } else if (stravaParam === 'error') {
       const msg = params.get('message') ?? 'unknown_error';
-      setError(`${t.strava.connectionFailed} ${msg.replace(/_/g, ' ')}`);
+      const friendly = {
+        missing_permissions: t.strava.errMissingPermissions,
+        access_denied: t.strava.errAccessDenied,
+        invalid_state: t.strava.errInvalidState,
+        exchange_failed: t.strava.errExchangeFailed,
+      }[msg] ?? `${t.strava.connectionFailed} ${msg.replace(/_/g, ' ')}`;
+      // missing_permissions is a user-recoverable mistake (warning, amber);
+      // the rest are real failures (error, red).
+      showToast(friendly, msg === 'missing_permissions' ? 'warning' : 'error', 8000);
     }
-    // Clear query params from URL
+    // Clear query params from URL so refreshing doesn't re-toast
     navigate('/settings', { replace: true });
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -406,13 +418,12 @@ const Settings: React.FC = () => {
     }
   };
 
+  // Reroute the legacy onToast prop to the global ToastProvider so every
+  // success/error from StravaCard, export, etc. surfaces in the same top-right
+  // location with consistent styling. The inline setError/setSuccess footer
+  // below is kept only for synchronous form validation messages.
   const handleToast = (msg: string, kind: 'success' | 'error') => {
-    if (kind === 'success') {
-      setSuccess(msg);
-      setTimeout(() => setSuccess(''), 5000);
-    } else {
-      setError(msg);
-    }
+    showToast(msg, kind);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

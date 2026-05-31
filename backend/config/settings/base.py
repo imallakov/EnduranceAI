@@ -152,6 +152,19 @@ STRAVA_REDIRECT_URI = config(
     'STRAVA_REDIRECT_URI',
     default='http://localhost:8000/api/integrations/strava/callback/',
 )
+# Strava webhook (push) subscription. The verify token is a random secret we
+# send to Strava when subscribing; Strava echoes it back during the GET
+# verification handshake so we can prove we own the callback endpoint.
+STRAVA_WEBHOOK_VERIFY_TOKEN = config(
+    'STRAVA_WEBHOOK_VERIFY_TOKEN',
+    default='change-me-in-production-please',
+)
+# Public callback URL Strava will POST events to. Must be HTTPS in production
+# and reachable from the public internet.
+STRAVA_WEBHOOK_CALLBACK_URL = config(
+    'STRAVA_WEBHOOK_CALLBACK_URL',
+    default='http://localhost:8000/api/integrations/strava/webhook/',
+)
 
 # Frontend URL
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')

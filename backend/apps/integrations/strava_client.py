@@ -13,6 +13,7 @@ STRAVA_AUTH_URL = 'https://www.strava.com/oauth/authorize'
 STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
 STRAVA_API_URL = 'https://www.strava.com/api/v3'
 STRAVA_DEAUTH_URL = 'https://www.strava.com/oauth/deauthorize'
+STRAVA_PUSH_SUBS_URL = 'https://www.strava.com/api/v3/push_subscriptions'
 
 RUNNING_TYPES = {'Run', 'TrailRun', 'VirtualRun'}
 
@@ -111,6 +112,74 @@ def list_activities(connection, after: int = None) -> list:
         time.sleep(1)
 
     return results
+
+
+def fetch_single_activity(connection, activity_id: int) -> dict | None:
+    """
+    Fetch one activity by ID (used by webhook event processor when Strava
+    notifies us of a new/updated activity). Returns the Strava dict or None
+    on 404 (already-deleted or filtered-out activity).
+    """
+    ensure_fresh_token(connection)
+    resp = requests.get(
+        f'{STRAVA_API_URL}/activities/{activity_id}',
+        headers={'Authorization': f'Bearer {connection.access_token}'},
+        timeout=20,
+    )
+    if resp.status_code == 404:
+        return None
+    if resp.status_code == 401:
+        connection.is_broken = True
+        connection.save(update_fields=['is_broken'])
+        raise PermissionError("Strava access revoked")
+    resp.raise_for_status()
+    return resp.json()
+
+
+# ── Webhook subscription management ──────────────────────────────────
+# Strava lets each app keep ONE active webhook subscription. The lifecycle:
+#   1. We POST to /push_subscriptions with our callback URL + verify token
+#   2. Strava GETs our callback URL with hub.mode=subscribe + hub.challenge
+#   3. We respond with {"hub.challenge": value} to prove ownership
+#   4. Strava confirms the subscription; we store the subscription_id
+#   5. Strava POSTs events to our callback when activities/athletes change
+# See: https://developers.strava.com/docs/webhooks/
+
+def create_webhook_subscription(callback_url: str, verify_token: str) -> dict:
+    """Register a new push subscription with Strava. Returns the subscription
+    response (with `id` field) on success."""
+    resp = requests.post(STRAVA_PUSH_SUBS_URL, data={
+        'client_id': settings.STRAVA_CLIENT_ID,
+        'client_secret': settings.STRAVA_CLIENT_SECRET,
+        'callback_url': callback_url,
+        'verify_token': verify_token,
+    }, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def list_webhook_subscriptions() -> list:
+    """Returns the (zero-or-one) currently-active subscription(s)."""
+    resp = requests.get(STRAVA_PUSH_SUBS_URL, params={
+        'client_id': settings.STRAVA_CLIENT_ID,
+        'client_secret': settings.STRAVA_CLIENT_SECRET,
+    }, timeout=15)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def delete_webhook_subscription(subscription_id: int) -> None:
+    """Remove an active subscription. Used when the callback URL changes
+    (e.g. moving from staging → prod) or when revoking access."""
+    resp = requests.delete(
+        f'{STRAVA_PUSH_SUBS_URL}/{subscription_id}',
+        params={
+            'client_id': settings.STRAVA_CLIENT_ID,
+            'client_secret': settings.STRAVA_CLIENT_SECRET,
+        },
+        timeout=15,
+    )
+    resp.raise_for_status()
 
 
 def convert_activity(strava_act: dict):

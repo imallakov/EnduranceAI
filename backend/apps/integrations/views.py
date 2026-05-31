@@ -158,3 +158,46 @@ class StravaDisconnectView(APIView):
         strava_client.deauthorize(conn.access_token)
         conn.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class StravaWebhookView(APIView):
+    """
+    Strava push subscription endpoint.
+
+    GET  → subscription verification handshake during setup. Strava sends
+           ?hub.mode=subscribe&hub.verify_token=...&hub.challenge=...
+           We must echo {"hub.challenge": value} within 2 seconds.
+
+    POST → event delivery. Strava sends activity/athlete change events here.
+           We respond 200 immediately (webhook spec — process async) and
+           dispatch real work to Celery so we never block Strava's sender.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        mode = request.query_params.get('hub.mode')
+        token = request.query_params.get('hub.verify_token')
+        challenge = request.query_params.get('hub.challenge')
+
+        expected = getattr(settings, 'STRAVA_WEBHOOK_VERIFY_TOKEN', '')
+        if mode == 'subscribe' and token and token == expected and challenge:
+            return Response({'hub.challenge': challenge})
+
+        logger.warning("Strava webhook verification failed: mode=%s token_match=%s",
+                       mode, token == expected)
+        return Response({'error': 'verification failed'}, status=status.HTTP_403_FORBIDDEN)
+
+    def post(self, request):
+        # Strava's webhook spec requires we respond 200 within 2 seconds —
+        # never do real work in the request handler. Push it to Celery.
+        payload = request.data
+        try:
+            from .tasks import process_strava_webhook
+            process_strava_webhook.delay(payload)
+        except Exception:
+            # If the broker is down, log and process synchronously so we
+            # don't drop the event entirely.
+            logger.warning("Celery unavailable — processing Strava webhook synchronously")
+            from .tasks import process_strava_webhook
+            process_strava_webhook(payload)
+        return Response({'status': 'received'})
