@@ -538,6 +538,8 @@ export const ru: Translations = {
     languageHintFull: 'Выберите предпочтительный язык интерфейса. Термины тренировок (Easy, Long, Tempo, Base и др.) остаются на английском — это стандартная тренерская терминология.',
     failedToSave: 'Не удалось сохранить профиль. Попробуйте ещё раз.',
     acceptedAt: (date: string, time: string) => `Принято ${date} · ${time} UTC`,
+    newVersionBadge: (version: string) => `Новая v${version}`,
+    newVersionAvailable: (version: string) => `Опубликована новая версия (v${version}) — откройте, чтобы ознакомиться с изменениями.`,
   },
   legal: {
     privacy: 'Политика конфиденциальности',

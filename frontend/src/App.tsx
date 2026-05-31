@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/ProtectedRoute';
+import ScrollToTop from './components/ScrollToTop';
 import CookieConsentBanner from './components/legal/CookieConsentBanner';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
@@ -22,6 +23,7 @@ import CookiePolicy from './pages/legal/CookiePolicy';
 
 const App: React.FC = () => (
   <>
+    <ScrollToTop />
     <Routes>
       {/* Public landing — no AppShell */}
       <Route path="/" element={<Landing />} />

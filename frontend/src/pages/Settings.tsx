@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useStravaStatus, useStravaSync, useStravaDisconnect } from '../hooks/useStrava';
-import { useUserAcceptances } from '../hooks/useLegal';
+import { useUserAcceptances, useActivePolicy } from '../hooks/useLegal';
 import { startStravaConnect } from '../api/integrations';
 import { apiClient } from '../api/client';
 import type { UserProfile, UploadStatusResponse } from '../types/api';
@@ -199,6 +199,7 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
               {t.strava.warningBody}
               <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
                 <button
+                  type="button"
                   onClick={handleConnect}
                   style={{
                     background: STRAVA_ORANGE, color: '#fff',
@@ -209,9 +210,10 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
                   {t.strava.warningContinue}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowWarning(false)}
-                  style={{ 
-                    background: 'transparent', border: 'none', 
+                  style={{
+                    background: 'transparent', border: 'none',
                     fontSize: 12, color: '#991b1b', cursor: 'pointer',
                     textDecoration: 'underline'
                   }}
@@ -222,6 +224,7 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
             </div>
           ) : (
             <button
+              type="button"
               onClick={handleConnect}
               style={{
                 alignSelf: 'flex-start',
@@ -255,6 +258,7 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
+              type="button"
               onClick={handleSync}
               disabled={syncing}
               className="btn btn-ghost"
@@ -284,6 +288,7 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
 
             {!confirmDisconnect ? (
               <button
+                type="button"
                 onClick={() => setConfirmDisconnect(true)}
                 className="btn btn-ghost"
                 style={{ fontSize: 13, color: 'var(--danger)' }}
@@ -296,6 +301,7 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
                   {t.strava.confirmDisconnect}
                 </span>
                 <button
+                  type="button"
                   onClick={handleDisconnect}
                   disabled={disconnectMutation.isPending}
                   style={{
@@ -307,6 +313,7 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
                   {disconnectMutation.isPending ? t.strava.disconnecting : t.strava.confirm}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setConfirmDisconnect(false)}
                   className="btn btn-ghost"
                   style={{ fontSize: 12 }}
@@ -350,6 +357,15 @@ const Settings: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { data: acceptances } = useUserAcceptances();
+  // Latest active versions for each policy — used to surface "you have an
+  // older version on file" badges when our published policy moved ahead of
+  // what the user clicked Accept on. Static cached for 1h.
+  const { data: activePrivacy } = useActivePolicy('privacy');
+  const { data: activeTerms }   = useActivePolicy('terms');
+  const activeByType: Record<string, string | undefined> = {
+    privacy: activePrivacy?.version,
+    terms:   activeTerms?.version,
+  };
 
   const [first_name, setFirstName] = useState(user?.first_name ?? '');
   const [last_name, setLastName] = useState(user?.last_name ?? '');
@@ -361,8 +377,6 @@ const Settings: React.FC = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   // Handle ?strava=connected / ?strava=error after OAuth redirect.
   // Errors come from backend as machine codes (missing_permissions, etc) —
@@ -419,17 +433,14 @@ const Settings: React.FC = () => {
   };
 
   // Reroute the legacy onToast prop to the global ToastProvider so every
-  // success/error from StravaCard, export, etc. surfaces in the same top-right
-  // location with consistent styling. The inline setError/setSuccess footer
-  // below is kept only for synchronous form validation messages.
+  // success/error from StravaCard, export, etc. surfaces in the same
+  // top-right location with consistent styling.
   const handleToast = (msg: string, kind: 'success' | 'error') => {
     showToast(msg, kind);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
     setSubmitting(true);
     try {
       const payload = {
@@ -441,10 +452,9 @@ const Settings: React.FC = () => {
       };
       const { data } = await apiClient.put<UserProfile>('/api/auth/profile/', payload);
       setUser(data);
-      setSuccess(t.settings.profileUpdated);
-      setTimeout(() => setSuccess(''), 3000);
+      showToast(t.settings.profileUpdated, 'success');
     } catch (err) {
-      setError(extractError(err, t.settings.failedToSave));
+      showToast(extractError(err, t.settings.failedToSave), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -560,17 +570,6 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        {error && (
-          <div style={{ fontSize: 13, color: 'var(--danger)', lineHeight: 1.45 }}>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div style={{ fontSize: 13, color: 'var(--success)', lineHeight: 1.45 }}>
-            {success}
-          </div>
-        )}
-
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button type="submit" disabled={submitting} className="btn btn-coral"
                   style={{ minWidth: 140, justifyContent: 'center' }}>
@@ -606,11 +605,28 @@ const Settings: React.FC = () => {
                                 : a.policy_type;
               const dateStr = new Date(a.accepted_at).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
               const timeStr = new Date(a.accepted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+              const currentVersion = activeByType[a.policy_type];
+              const isOutdated = currentVersion && currentVersion !== a.policy_version;
               return (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
-                      {policyLabel} v{a.policy_version}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                        {policyLabel} v{a.policy_version}
+                      </span>
+                      {isOutdated && (
+                        <span
+                          title={t.settings.newVersionAvailable(currentVersion!)}
+                          style={{
+                            fontSize: 10.5, fontWeight: 600, padding: '2px 7px',
+                            borderRadius: 20, background: '#FFFBEB',
+                            color: '#92400E', border: '1px solid #FDE68A',
+                            letterSpacing: 0.2,
+                          }}
+                        >
+                          {t.settings.newVersionBadge(currentVersion!)}
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>
                       {t.settings.acceptedAt(dateStr, timeStr)}

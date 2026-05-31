@@ -538,6 +538,8 @@ export const tr: Translations = {
     languageHintFull: 'Tercih ettiğiniz arayüz dilini seçin. Antrenman terimleri (Easy, Long, Tempo, Base vb.) İngilizce kalır — bunlar koşu antrenörü standart terminolojisidir.',
     failedToSave: 'Profil kaydedilemedi. Tekrar deneyin.',
     acceptedAt: (date: string, time: string) => `${date} · ${time} UTC tarihinde kabul edildi`,
+    newVersionBadge: (version: string) => `Yeni v${version}`,
+    newVersionAvailable: (version: string) => `Yeni bir sürüm (v${version}) yayınlandı — değişiklikleri görmek için açın.`,
   },
   legal: {
     privacy: 'Gizlilik Politikası',

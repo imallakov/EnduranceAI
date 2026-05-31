@@ -536,6 +536,8 @@ export const en = {
     languageHintFull: 'Choose your preferred interface language. Workout terms (Easy, Long, Tempo, Base, etc.) stay in English — they are running-coach standard terminology.',
     failedToSave: 'Failed to save profile. Try again.',
     acceptedAt: (date: string, time: string) => `Accepted ${date} · ${time} UTC`,
+    newVersionBadge: (version: string) => `New v${version}`,
+    newVersionAvailable: (version: string) => `A newer version (v${version}) has been published — open it to review the changes.`,
   },
   legal: {
     privacy: 'Privacy Policy',
