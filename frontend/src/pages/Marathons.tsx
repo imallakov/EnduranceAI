@@ -257,7 +257,11 @@ function FilterBar({ state, onChange, countries, selectedCountries, onCountryTog
         </button>
         {countryOpen && (
           <div style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 50,
+            // zIndex must be above Leaflet panes (which top out at 700 for
+            // popups). Map tiles + polylines start at 200, so anything below
+            // ~750 risks getting overlapped by a card map rendered later in
+            // the DOM. 1000 is a safe ceiling shared with our toast/modal layer.
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, zIndex: 1000,
             background: '#fff', border: '1px solid #E2E8F0', borderRadius: 10,
             boxShadow: '0 8px 24px -4px rgba(15,23,42,0.15)',
             padding: 8, minWidth: 180, maxHeight: 280, overflowY: 'auto',

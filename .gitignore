@@ -46,10 +46,15 @@ backend/ml/data/
 *.joblib
 *.pkl
 
-# GPX/FIT files (excluding test fixtures)
+# GPX/FIT files (excluding test fixtures and reference race routes)
+# Reference race routes (Berlin/London/Tokyo/etc.) live in backend/data/gpx/
+# and are needed on every deploy — they're public, static, ~1.5 MB total.
+# User-uploaded custom GPX still lands under backend/data/gpx/custom/<uuid>/
+# and stays ignored via the *.gpx fall-through.
 *.gpx
 *.fit
 !backend/tests/fixtures/
+!backend/data/gpx/*.gpx
 
 # Design and Documentation
 design-*/
