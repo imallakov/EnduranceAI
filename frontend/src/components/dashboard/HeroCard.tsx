@@ -10,6 +10,9 @@ interface HeroCardProps {
   daysToRace: number | null;
   predictionForTarget?: boolean;
   targetMarathonName?: string | null;
+  /** Used to deep-link "Generate prediction" CTA to /predictions with the
+   *  target marathon already selected, so the user doesn't pick it twice. */
+  targetMarathonId?: string | null;
 }
 
 function formatConfidence(sec: number | null): string {
@@ -34,10 +37,16 @@ const HeroCard: React.FC<HeroCardProps> = ({
   daysToRace,
   predictionForTarget = true,
   targetMarathonName,
+  targetMarathonId,
 }) => {
   const t = useT();
 
   if (!prediction) {
+    // When the user already has a target marathon set, pass its id along so
+    // the Predictions page can preselect it — saves one redundant click.
+    const generateHref = targetMarathonName
+      ? (targetMarathonId ? `/predictions?marathon=${targetMarathonId}` : '/predictions')
+      : '/marathons';
     return (
       <div className="card hero-card-root" style={{ padding: 24, minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
         <div style={{ textAlign: 'center' }}>
@@ -48,7 +57,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
               : t.dashboard.setTargetFirst}
           </div>
           <Link
-            to={targetMarathonName ? '/predictions' : '/marathons'}
+            to={generateHref}
             className="btn btn-coral"
             style={{ textDecoration: 'none' }}
           >

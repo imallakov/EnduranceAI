@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { PlanWorkout, PlanWeek, TrainingPlan } from '../../types/api';
 import { IconChevRight, IconClose, IconCheck, IconRefresh, IconChevDown } from '../icons';
@@ -7,6 +7,31 @@ import StructureBar, { parseStructure } from './StructureBar';
 import { useMarkWorkoutComplete, useSwapWorkoutType } from '../../hooks/usePlan';
 import { weekStartDate } from './CurrentWeekGrid';
 import { useT, useLang } from '../../i18n/context';
+
+/**
+ * Run a callback when a pointerdown lands outside the referenced element.
+ * Used here for the swap-type dropdown which otherwise stays open until the
+ * user selects an item — clicking elsewhere did nothing, which felt broken.
+ *
+ * Pointerdown (vs click) fires before focus moves and works on touch.
+ */
+function useOnClickOutside(
+  ref: React.RefObject<HTMLElement>,
+  enabled: boolean,
+  handler: () => void,
+) {
+  useEffect(() => {
+    if (!enabled) return;
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (ref.current && target && !ref.current.contains(target)) {
+        handler();
+      }
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [ref, enabled, handler]);
+}
 
 const TYPE_LABELS: Record<string, string> = {
   rest:          'Rest',
@@ -35,6 +60,8 @@ const WorkoutDrawer: React.FC<WorkoutDrawerProps> = ({
   open, onClose, workout, week, plan, onNavigate, prevLabel, nextLabel,
 }) => {
   const [swapOpen, setSwapOpen] = useState(false);
+  const swapRef = useRef<HTMLDivElement>(null);
+  useOnClickOutside(swapRef, swapOpen, () => setSwapOpen(false));
   const markComplete    = useMarkWorkoutComplete();
   const swapType        = useSwapWorkoutType();
   const t = useT();
@@ -116,10 +143,30 @@ const WorkoutDrawer: React.FC<WorkoutDrawerProps> = ({
               <span style={{ color: 'var(--text)', fontWeight: 500 }}>{dowShort} · {dateLabel}</span>
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
-              <button className="btn btn-ghost" style={{ width: 30, height: 30, padding: 0, justifyContent: 'center' }} onClick={() => onNavigate('prev')}>
+              <button
+                className="btn btn-ghost"
+                style={{
+                  width: 30, height: 30, padding: 0, justifyContent: 'center',
+                  opacity: prevLabel ? 1 : 0.35,
+                  cursor: prevLabel ? 'pointer' : 'not-allowed',
+                }}
+                onClick={() => prevLabel && onNavigate('prev')}
+                disabled={!prevLabel}
+                aria-label="Previous workout"
+              >
                 <IconChevRight size={13} style={{ transform: 'rotate(180deg)' }} />
               </button>
-              <button className="btn btn-ghost" style={{ width: 30, height: 30, padding: 0, justifyContent: 'center' }} onClick={() => onNavigate('next')}>
+              <button
+                className="btn btn-ghost"
+                style={{
+                  width: 30, height: 30, padding: 0, justifyContent: 'center',
+                  opacity: nextLabel ? 1 : 0.35,
+                  cursor: nextLabel ? 'pointer' : 'not-allowed',
+                }}
+                onClick={() => nextLabel && onNavigate('next')}
+                disabled={!nextLabel}
+                aria-label="Next workout"
+              >
                 <IconChevRight size={13} />
               </button>
               <Dialog.Close asChild>
@@ -239,7 +286,7 @@ const WorkoutDrawer: React.FC<WorkoutDrawerProps> = ({
                   <IconCheck size={14} stroke={2.5} />
                   {workout.completed ? t.plan.completed : t.plan.markComplete}
                 </button>
-                <div style={{ position: 'relative' }}>
+                <div ref={swapRef} style={{ position: 'relative' }}>
                   <button
                     className="btn btn-ghost"
                     style={{ height: 38 }}
@@ -276,9 +323,17 @@ const WorkoutDrawer: React.FC<WorkoutDrawerProps> = ({
               </div>
             )}
 
-            {/* Prev / next footer */}
+            {/* Prev / next footer — only clickable when there's a target;
+                otherwise rendered dimmed and non-interactive. */}
             <div style={{ marginTop: 22, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: 'var(--muted)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }} onClick={() => onNavigate('prev')}>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  opacity: prevLabel ? 1 : 0.35,
+                  cursor: prevLabel ? 'pointer' : 'default',
+                }}
+                onClick={() => prevLabel && onNavigate('prev')}
+              >
                 <IconChevRight size={11} style={{ transform: 'rotate(180deg)' }} />
                 {prevLabel && (
                   <div>
@@ -287,7 +342,14 @@ const WorkoutDrawer: React.FC<WorkoutDrawerProps> = ({
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', textAlign: 'right' }} onClick={() => onNavigate('next')}>
+              <div
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, textAlign: 'right',
+                  opacity: nextLabel ? 1 : 0.35,
+                  cursor: nextLabel ? 'pointer' : 'default',
+                }}
+                onClick={() => nextLabel && onNavigate('next')}
+              >
                 {nextLabel && (
                   <div>
                     <div style={{ fontSize: 10, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--muted-2)' }}>{t.plan.next}</div>

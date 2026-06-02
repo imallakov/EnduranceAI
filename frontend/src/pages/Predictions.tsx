@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { formatTime } from '../lib/format';
 import useIsMobile from '../lib/useIsMobile';
 import {
@@ -177,9 +178,28 @@ const PredictionFormCard: React.FC<PredictionFormCardProps> = ({ onSuccess, vdot
   const t = useT();
   const { data: marathons = [], isLoading: marathonsLoading } = useMarathons();
   const mutation = useCreatePrediction();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [mode, setMode] = useState<TargetMode>('marathon');
   const [marathonId, setMarathonId] = useState('');
+
+  // Deep-link from Dashboard HeroCard: /predictions?marathon=<uuid> →
+  // preselect this marathon so the user doesn't pick it again. Only honour
+  // the param if the uuid actually exists in the loaded marathons list
+  // (defends against stale links to deleted custom races).
+  useEffect(() => {
+    if (!marathons.length) return;
+    const queryMarathon = searchParams.get('marathon');
+    if (queryMarathon && marathons.some(m => m.id === queryMarathon)) {
+      setMarathonId(queryMarathon);
+      setMode('marathon');
+      // Strip the param so a refresh doesn't keep re-applying it after the
+      // user maybe changed their selection.
+      const next = new URLSearchParams(searchParams);
+      next.delete('marathon');
+      setSearchParams(next, { replace: true });
+    }
+  }, [marathons, searchParams, setSearchParams]);
   const [distanceKm, setDistanceKm] = useState('42.195');
   const [raceDate, setRaceDate] = useState(defaultRaceDate());
   const [showWeather, setShowWeather] = useState(false);

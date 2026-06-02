@@ -136,6 +136,7 @@ const CurrentWeekGrid: React.FC<CurrentWeekGridProps> = ({ plan, displayedWeekNu
               isCurrentWeek={displayedWeekNumber === current_week_number}
               isMob={isMob}
               onClick={() => onCellClick(workout, week)}
+              planCreatedAt={plan.created_at ? new Date(plan.created_at) : undefined}
             />
           );
         })}

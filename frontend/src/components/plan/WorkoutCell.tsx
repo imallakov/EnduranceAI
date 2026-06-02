@@ -27,6 +27,14 @@ interface WorkoutCellProps {
   isCurrentWeek?: boolean;
   isMob?: boolean;
   onClick?: () => void;
+  /**
+   * Plan creation timestamp. Workouts whose date falls BEFORE this moment
+   * never existed for the runner (we generated the plan mid-week); rendering
+   * them as `missed` reads as "you screwed up on day 1" and tanks first
+   * impression. We treat such cells as `pre_creation` — neutral styling, no
+   * opacity dimming, small badge.
+   */
+  planCreatedAt?: Date;
 }
 
 function workoutDate(weekStartDate: Date, dayOfWeek: number): Date {
@@ -35,7 +43,7 @@ function workoutDate(weekStartDate: Date, dayOfWeek: number): Date {
   return d;
 }
 
-const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCurrentWeek = false, isMob = false, onClick }) => {
+const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCurrentWeek = false, isMob = false, onClick, planCreatedAt }) => {
   const t = useT();
   const { lang } = useLang();
 
@@ -47,7 +55,14 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
   const today  = new Date();
   const isToday = isCurrentWeek
     && wDate.toDateString() === today.toDateString();
-  const isMissed = !workout.completed && !isToday && wDate < today;
+  // Compare on day boundary (not exact ms) so a workout scheduled for the
+  // same calendar day the plan was generated still counts as "in plan".
+  // new Date(d) copies — never mutates the caller's wDate / planCreatedAt.
+  const dayStartMs = (d: Date) => new Date(d).setHours(0, 0, 0, 0);
+  const isPreCreation = Boolean(
+    planCreatedAt && !workout.completed && dayStartMs(wDate) < dayStartMs(planCreatedAt)
+  );
+  const isMissed = !workout.completed && !isToday && wDate < today && !isPreCreation;
 
   const dowLabel  = wDate.toLocaleDateString(lang, { weekday: 'short' }).toUpperCase();
   const dateLabel = wDate.toLocaleDateString(lang, { month: 'short', day: 'numeric' });
@@ -113,6 +128,15 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
         
         {isToday && (
           <div style={{ position: 'absolute', top: 0, right: 0, width: 4, height: '100%', background: '#4F46E5', borderRadius: '0 14px 14px 0' }} />
+        )}
+        {isPreCreation && (
+          <div style={{
+            position: 'absolute', top: 6, right: 8,
+            fontSize: 9, fontWeight: 600, letterSpacing: 0.4,
+            color: 'var(--muted-2)', textTransform: 'uppercase',
+          }}>
+            {t.plan.prePlanLabel}
+          </div>
         )}
       </div>
     );
@@ -215,6 +239,21 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
           borderRadius: '0 13px 0 6px',
         }}>
           {t.plan.today}
+        </div>
+      )}
+
+      {/* Pre-plan label — workout falls before the plan was generated; we
+          show it for context but don't dim/judge it. */}
+      {isPreCreation && !isToday && (
+        <div style={{
+          position: 'absolute', top: -1, right: -1,
+          padding: '2px 8px 3px',
+          background: 'var(--bg)', color: 'var(--muted-2)',
+          fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+          borderRadius: '0 13px 0 6px',
+          border: '1px solid var(--border-soft)',
+        }}>
+          {t.plan.prePlanLabel}
         </div>
       )}
     </div>

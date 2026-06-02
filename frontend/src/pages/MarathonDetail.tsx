@@ -9,7 +9,7 @@ import MiniElevation from '../components/marathon/MiniElevation';
 import { useT } from '../i18n/context';
 import useIsMobile from '../lib/useIsMobile';
 import {
-  countryToFlag, getDiffKey, MONTH_NAMES, MONTH_NAMES_FULL,
+  getDiffKey, MONTH_NAMES, MONTH_NAMES_FULL,
   makeSyntheticProfile,
 } from '../lib/marathonUtils';
 
@@ -187,9 +187,9 @@ const MarathonDetail: React.FC = () => {
           {t.marathonDetail.backToCatalog}
         </Link>
 
-        {/* Country + city row */}
+        {/* Country + city row — flag emoji intentionally omitted (Windows
+            fallback duplicates the ISO code). */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 24, lineHeight: 1 }}>{countryToFlag(marathon.country)}</span>
           <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: 0.4 }}>
             {marathon.country}
           </span>

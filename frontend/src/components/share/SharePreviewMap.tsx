@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useId } from 'react';
 import polylineLib from '@mapbox/polyline';
 
 interface Props {
@@ -88,7 +88,11 @@ const SharePreviewMap: React.FC<Props> = ({
 
   if (!points) return null;
 
-  const uid = Math.random().toString(36).slice(2, 7);
+  // Stable per-instance SVG <defs> id. Math.random() here caused a fresh id
+  // every render, breaking url(#filter-<uid>) refs for a frame when format
+  // changed (16:9 ↔ 9:16 ↔ 1:1). useId is React 18's purpose-built solution.
+  // Strip colons that React adds — they're invalid in SVG/CSS id selectors.
+  const uid = useId().replace(/:/g, '');
 
   return (
     <svg

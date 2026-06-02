@@ -116,6 +116,7 @@ const Dashboard: React.FC = () => {
                 daysToRace={data?.days_to_race ?? null}
                 predictionForTarget={data?.prediction_for_target ?? true}
                 targetMarathonName={user?.target_marathon_name ?? null}
+                targetMarathonId={user?.target_marathon ?? null}
               />
               <MetricsRow
                 metrics={data?.metrics ?? { vdot: null, ctl: null, atl: null, tsb: null }}
