@@ -256,6 +256,9 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
             </div>
           </div>
 
+          {/* Refresh + disconnect row. The refresh button is a safety net —
+              webhooks deliver new activities automatically, so most users
+              never need to press it. Hint below explains that. */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -322,6 +325,9 @@ const StravaCard: React.FC<StravaCardProps> = ({ onToast }) => {
                 </button>
               </div>
             )}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.45, marginTop: 2 }}>
+            {t.strava.syncHint}
           </div>
           <div style={{ marginTop: 8 }}>
             <StravaBadge />

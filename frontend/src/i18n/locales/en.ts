@@ -452,7 +452,10 @@ export const en = {
     disconnect: 'Disconnect',
     connected: 'Connected',
     lastSync: 'Last sync',
-    syncNow: 'Sync now',
+    // Label kept as `syncNow` for code stability; user-facing copy switched
+    // to "Refresh now" once webhooks made auto-sync the primary flow.
+    syncNow: 'Refresh now',
+    syncHint: 'Activities import automatically when you finish a run. Use this if something looks missing.',
     syncing: 'Syncing…',
     brokenConnection: 'Connection broken',
     reconnect: 'Reconnect',
