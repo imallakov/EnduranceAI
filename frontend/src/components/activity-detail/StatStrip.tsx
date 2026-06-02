@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { ActivityDetail } from '../../types/api';
 import { formatPace } from './utils';
 import { IconArrowUp } from '../icons';
@@ -10,6 +10,10 @@ interface StatStripProps {
 
 const StatStrip: React.FC<StatStripProps> = ({ activity }) => {
   const t = useT();
+  // Index of the cell whose info caption is currently expanded, or null.
+  // Click-toggle (vs hover) so it works on touch and gives the user explicit
+  // control — accidental hovers don't pop a wall of text.
+  const [openInfo, setOpenInfo] = useState<number | null>(null);
   const pace = activity.avg_pace_sec_per_km != null ? Number(activity.avg_pace_sec_per_km) : null;
   const elevGain = activity.elevation_gain_m != null ? Math.round(Number(activity.elevation_gain_m)) : null;
   const elevLoss = activity.elevation_loss_m != null ? Math.round(Number(activity.elevation_loss_m)) : null;
@@ -53,12 +57,11 @@ const StatStrip: React.FC<StatStripProps> = ({ activity }) => {
       display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12
     }}>
       {cells.map((c, i) => (
-        <div key={i} className="card hoverable" title={c.title} style={{
+        <div key={i} className="card hoverable" style={{
           padding: '16px',
           background: '#F8FAFC',
           display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center',
           boxShadow: 'none', border: '1px solid var(--border-soft)',
-          cursor: c.title ? 'help' : undefined,
         }}>
           <span className="label-sm" style={{
             fontSize: 10.5,
@@ -66,13 +69,27 @@ const StatStrip: React.FC<StatStripProps> = ({ activity }) => {
           }}>
             {c.label}
             {c.title && (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                   style={{ opacity: 0.6 }} aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
+              <button
+                type="button"
+                onClick={() => setOpenInfo(openInfo === i ? null : i)}
+                aria-label="More info"
+                aria-expanded={openInfo === i}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 14, height: 14, padding: 0, border: 'none',
+                  background: 'transparent', cursor: 'pointer',
+                  color: openInfo === i ? '#4F46E5' : 'currentColor',
+                  opacity: openInfo === i ? 1 : 0.55,
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                     aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+              </button>
             )}
           </span>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 2 }}>
@@ -92,6 +109,19 @@ const StatStrip: React.FC<StatStripProps> = ({ activity }) => {
                 <IconArrowUp size={10} />
                 {c.delta.text}
               </span>
+            </div>
+          )}
+          {/* Caption appears only when the user clicks the ⓘ — keeps the
+              compact row tidy until they want context. */}
+          {c.title && openInfo === i && (
+            <div style={{
+              marginTop: 8, padding: '8px 10px',
+              fontSize: 11, lineHeight: 1.5,
+              color: 'var(--text)',
+              background: '#EEF2FF', borderRadius: 6,
+              border: '1px solid #C7D2FE',
+            }}>
+              {c.title}
             </div>
           )}
         </div>

@@ -366,6 +366,16 @@ const Settings: React.FC = () => {
     privacy: activePrivacy?.version,
     terms:   activeTerms?.version,
   };
+  // Set of policy_types for which the user has already accepted the CURRENT
+  // active version. Older audit-trail entries for these types must NOT show
+  // "Review & accept" — the user is up-to-date, the old rows are just
+  // history. Without this guard, after re-accepting v1.0.1 the old v1.0.0
+  // row keeps nagging the user.
+  const acceptedCurrentByType = new Set(
+    (acceptances ?? [])
+      .filter(a => activeByType[a.policy_type] === a.policy_version)
+      .map(a => a.policy_type)
+  );
 
   const [first_name, setFirstName] = useState(user?.first_name ?? '');
   const [last_name, setLastName] = useState(user?.last_name ?? '');
@@ -606,7 +616,13 @@ const Settings: React.FC = () => {
               const dateStr = new Date(a.accepted_at).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' });
               const timeStr = new Date(a.accepted_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
               const currentVersion = activeByType[a.policy_type];
-              const isOutdated = currentVersion && currentVersion !== a.policy_version;
+              // Only nag if (a) acceptance is for an older version AND (b)
+              // user hasn't ALSO already accepted the current version.
+              const isOutdated = Boolean(
+                currentVersion
+                && currentVersion !== a.policy_version
+                && !acceptedCurrentByType.has(a.policy_type)
+              );
               return (
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)' }}>
                   <div>

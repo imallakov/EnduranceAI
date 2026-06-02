@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import ActivityMap from '../components/activity-detail/ActivityMap';
 import DifficultyBar from '../components/marathon/DifficultyBar';
 import MiniElevation from '../components/marathon/MiniElevation';
+import Flag from '../components/Flag';
 import { useT } from '../i18n/context';
 import useIsMobile from '../lib/useIsMobile';
 import {
@@ -187,9 +188,10 @@ const MarathonDetail: React.FC = () => {
           {t.marathonDetail.backToCatalog}
         </Link>
 
-        {/* Country + city row — flag emoji intentionally omitted (Windows
-            fallback duplicates the ISO code). */}
+        {/* Country + city row. Flag is a flat SVG from flagcdn.com so it
+            renders identically on Windows / macOS / Linux. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <Flag code={marathon.country} width={22} />
           <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, fontWeight: 600, color: '#64748B', letterSpacing: 0.4 }}>
             {marathon.country}
           </span>

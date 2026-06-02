@@ -8,6 +8,7 @@ import DifficultyBar from '../components/marathon/DifficultyBar';
 import MiniElevation from '../components/marathon/MiniElevation';
 import MarathonMiniMap from '../components/marathon/MarathonMiniMap';
 import LazyMarathonMiniMap from '../components/marathon/LazyMarathonMiniMap';
+import Flag from '../components/Flag';
 import type { Marathon } from '../types/api';
 import { useT, useLang } from '../i18n/context';
 import {
@@ -80,18 +81,19 @@ function FeaturedHero({
           <span style={{ width: 5, height: 5, borderRadius: 3, background: '#fff' }} />
           {marathon.major ? t.marathons.worldMarathonMajor : t.marathons.featured}
         </div>
-        {/* Country code chip — flag emoji removed for cross-platform consistency
-            (Windows can't render regional indicator characters as flags). */}
+        {/* Country chip — SVG flag from flagcdn.com (cross-platform, no emoji
+            font dependency) + ISO code for clarity. */}
         <div style={{
           position: 'absolute', top: 16, right: 22,
-          display: 'inline-flex', alignItems: 'center',
-          height: 24, padding: '0 10px',
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          height: 26, padding: '0 10px 0 8px',
           background: 'rgba(255,255,255,0.14)',
           border: '1px solid rgba(255,255,255,0.20)',
-          borderRadius: 12,
+          borderRadius: 13,
           color: '#fff', fontSize: 11.5, fontWeight: 700, letterSpacing: 0.6,
           fontFamily: 'ui-monospace, monospace',
         }}>
+          <Flag code={marathon.country} width={18} />
           {marathon.country}
         </div>
         {/* Weather chip — NO backdrop-filter */}
@@ -282,9 +284,7 @@ function FilterBar({ state, onChange, countries, selectedCountries, onCountryTog
                 <input type="checkbox" checked={selectedCountries.includes(code)}
                   onChange={() => onCountryToggle(code)}
                   style={{ accentColor: '#4F46E5', width: 13, height: 13 }} />
-                {/* Emoji flag intentionally omitted — on Windows/Linux without
-                    an emoji-flag font it falls back to literal "DE", which
-                    duplicates the ISO code shown next to it. */}
+                <Flag code={code} width={16} />
                 <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 600, letterSpacing: 0.3 }}>{code}</span>
               </label>
             ))}
@@ -436,10 +436,8 @@ function MarathonCard({
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         background: '#FAFAF9', borderBottom: '1px solid #F1F5F9',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Emoji flag removed to avoid Windows fallback "DE DE" duplication
-              with the ISO code below. Keep just the country code; FeaturedHero
-              still shows a large standalone flag at the top. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <Flag code={marathon.country} width={16} />
           <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 11, fontWeight: 600, color: '#0F172A', letterSpacing: 0.4 }}>
             {marathon.country}
           </span>
