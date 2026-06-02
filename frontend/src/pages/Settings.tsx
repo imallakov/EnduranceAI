@@ -611,10 +611,23 @@ const Settings: React.FC = () => {
       <div className="card" style={{ maxWidth: 640, padding: 28, marginTop: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div className="label-sm">{t.settings.legalPrivacy}</div>
 
-        {/* Policy acceptances */}
-        {acceptances && acceptances.length > 0 && (
+        {/* Policy acceptances — surface only the MOST RECENT acceptance per
+            policy_type. Older versions stay in the DB (GDPR audit trail,
+            data export) but flooding the UI with v1.0.0 / v1.0.1 / v1.0.2
+            rows is noise once the user has up-to-date consent. */}
+        {acceptances && acceptances.length > 0 && (() => {
+          // acceptances are pre-sorted by -accepted_at on the backend, so
+          // the first one we see per type is the latest.
+          const latestPerType = new Map<string, typeof acceptances[number]>();
+          for (const a of acceptances) {
+            if (!latestPerType.has(a.policy_type)) {
+              latestPerType.set(a.policy_type, a);
+            }
+          }
+          const visibleAcceptances = Array.from(latestPerType.values());
+          return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {acceptances.map(a => {
+            {visibleAcceptances.map(a => {
               const policyLabel = a.policy_type === 'privacy' ? t.legal.privacy
                                 : a.policy_type === 'terms' ? t.legal.terms
                                 : a.policy_type === 'cookies' ? t.legal.cookies
@@ -670,7 +683,8 @@ const Settings: React.FC = () => {
               );
             })}
           </div>
-        )}
+          );
+        })()}
 
         <div style={{ display: 'flex', gap: 10 }}>
           <Link to="/legal/privacy" style={{ fontSize: 13, color: 'var(--primary)', textDecoration: 'none' }}>

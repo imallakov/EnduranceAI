@@ -62,6 +62,9 @@ const StatStrip: React.FC<StatStripProps> = ({ activity }) => {
           background: '#F8FAFC',
           display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center',
           boxShadow: 'none', border: '1px solid var(--border-soft)',
+          // Anchor for the floating info popover. position:relative is
+          // enough — the popover uses position:absolute inside.
+          position: 'relative',
         }}>
           <span className="label-sm" style={{
             fontSize: 10.5,
@@ -111,18 +114,47 @@ const StatStrip: React.FC<StatStripProps> = ({ activity }) => {
               </span>
             </div>
           )}
-          {/* Caption appears only when the user clicks the ⓘ — keeps the
-              compact row tidy until they want context. */}
+          {/* Floating popover. position:absolute keeps the grid row at its
+              natural height — the caption hovers above other cards rather
+              than pushing them down. Click ⓘ again (or anywhere else once
+              we add outside-click) to dismiss. */}
           {c.title && openInfo === i && (
-            <div style={{
-              marginTop: 8, padding: '8px 10px',
-              fontSize: 11, lineHeight: 1.5,
-              color: 'var(--text)',
-              background: '#EEF2FF', borderRadius: 6,
-              border: '1px solid #C7D2FE',
-            }}>
-              {c.title}
-            </div>
+            <>
+              {/* invisible backdrop catches outside clicks */}
+              <div
+                onClick={() => setOpenInfo(null)}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 40,
+                  background: 'transparent',
+                }}
+              />
+              <div
+                role="tooltip"
+                style={{
+                  position: 'absolute', zIndex: 50,
+                  top: 'calc(100% + 6px)', left: 12, right: 12,
+                  padding: '10px 12px',
+                  fontSize: 11.5, lineHeight: 1.5,
+                  color: 'var(--text)',
+                  background: '#fff',
+                  border: '1px solid #C7D2FE',
+                  borderRadius: 8,
+                  boxShadow: '0 12px 28px -8px rgba(15,23,42,0.18)',
+                  minWidth: 220,
+                }}
+              >
+                {/* little arrow */}
+                <div style={{
+                  position: 'absolute', top: -6, left: 20,
+                  width: 12, height: 12,
+                  background: '#fff',
+                  borderTop: '1px solid #C7D2FE',
+                  borderLeft: '1px solid #C7D2FE',
+                  transform: 'rotate(45deg)',
+                }} />
+                {c.title}
+              </div>
+            </>
           )}
         </div>
       ))}
