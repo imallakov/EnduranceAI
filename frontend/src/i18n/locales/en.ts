@@ -538,6 +538,7 @@ export const en = {
     acceptedAt: (date: string, time: string) => `Accepted ${date} · ${time} UTC`,
     newVersionBadge: (version: string) => `New v${version}`,
     newVersionAvailable: (version: string) => `A newer version (v${version}) has been published — open it to review the changes.`,
+    reviewAcceptArrow: 'Review & accept →',
   },
   legal: {
     privacy: 'Privacy Policy',
@@ -549,6 +550,17 @@ export const en = {
     questionsContact: 'Questions? Contact',
     failedToLoad: 'Failed to load policy. Please try again.',
     legal: 'Legal',
+    outdatedTitle: 'New version available',
+    outdatedBody: (oldV: string, newV: string) =>
+      `You previously accepted v${oldV}. The current version is v${newV}. Please review the changes and accept to continue.`,
+    acceptanceCheckbox: (version: string) =>
+      `I have read and accept the updated policy (v${version}).`,
+    acceptanceButton: (version: string) => `Accept v${version}`,
+    acceptanceSubmitting: 'Saving…',
+    acceptanceCancel: 'Cancel',
+    acceptanceRecorded: 'Acceptance recorded.',
+    acceptanceFailed: 'Could not record acceptance. Please try again.',
+    acceptanceRegionLabel: 'Policy acceptance',
   },
   marathonDetail: {
     backToCatalog: '← All marathons',

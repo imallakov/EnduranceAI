@@ -540,6 +540,7 @@ export const tr: Translations = {
     acceptedAt: (date: string, time: string) => `${date} · ${time} UTC tarihinde kabul edildi`,
     newVersionBadge: (version: string) => `Yeni v${version}`,
     newVersionAvailable: (version: string) => `Yeni bir sürüm (v${version}) yayınlandı — değişiklikleri görmek için açın.`,
+    reviewAcceptArrow: 'İncele ve kabul et →',
   },
   legal: {
     privacy: 'Gizlilik Politikası',
@@ -551,6 +552,17 @@ export const tr: Translations = {
     questionsContact: 'Sorularınız mı var? İletişime geçin:',
     failedToLoad: 'Politika yüklenemedi. Lütfen tekrar deneyin.',
     legal: 'Hukuki',
+    outdatedTitle: 'Yeni sürüm mevcut',
+    outdatedBody: (oldV: string, newV: string) =>
+      `Daha önce v${oldV} sürümünü kabul ettiniz. Güncel sürüm v${newV}. Lütfen değişiklikleri inceleyin ve kabul edin.`,
+    acceptanceCheckbox: (version: string) =>
+      `Güncellenmiş politikayı (v${version}) okudum ve kabul ediyorum.`,
+    acceptanceButton: (version: string) => `v${version} sürümünü kabul et`,
+    acceptanceSubmitting: 'Kaydediliyor…',
+    acceptanceCancel: 'İptal',
+    acceptanceRecorded: 'Kabul kaydedildi.',
+    acceptanceFailed: 'Kabul kaydedilemedi. Lütfen tekrar deneyin.',
+    acceptanceRegionLabel: 'Politika kabulü',
   },
   marathonDetail: {
     backToCatalog: '← Tüm maratonlar',

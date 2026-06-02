@@ -634,9 +634,15 @@ const Settings: React.FC = () => {
                   </div>
                   <Link
                     to={`/legal/${a.policy_type}`}
-                    style={{ fontSize: 12, color: 'var(--primary)', textDecoration: 'none', fontWeight: 500, whiteSpace: 'nowrap' }}
+                    style={{
+                      fontSize: 12,
+                      color: isOutdated ? '#92400E' : 'var(--primary)',
+                      textDecoration: 'none',
+                      fontWeight: isOutdated ? 600 : 500,
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    {t.settings.viewArrow}
+                    {isOutdated ? t.settings.reviewAcceptArrow : t.settings.viewArrow}
                   </Link>
                 </div>
               );

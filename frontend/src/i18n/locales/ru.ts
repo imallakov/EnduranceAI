@@ -540,6 +540,7 @@ export const ru: Translations = {
     acceptedAt: (date: string, time: string) => `Принято ${date} · ${time} UTC`,
     newVersionBadge: (version: string) => `Новая v${version}`,
     newVersionAvailable: (version: string) => `Опубликована новая версия (v${version}) — откройте, чтобы ознакомиться с изменениями.`,
+    reviewAcceptArrow: 'Прочесть и принять →',
   },
   legal: {
     privacy: 'Политика конфиденциальности',
@@ -551,6 +552,17 @@ export const ru: Translations = {
     questionsContact: 'Вопросы? Напишите',
     failedToLoad: 'Не удалось загрузить политику. Попробуйте ещё раз.',
     legal: 'Правовая информация',
+    outdatedTitle: 'Доступна новая версия',
+    outdatedBody: (oldV: string, newV: string) =>
+      `Ранее вы приняли v${oldV}. Текущая версия — v${newV}. Пожалуйста, ознакомьтесь с изменениями и подтвердите согласие.`,
+    acceptanceCheckbox: (version: string) =>
+      `Я прочитал(а) и принимаю обновлённую политику (v${version}).`,
+    acceptanceButton: (version: string) => `Принять v${version}`,
+    acceptanceSubmitting: 'Сохраняем…',
+    acceptanceCancel: 'Отмена',
+    acceptanceRecorded: 'Согласие сохранено.',
+    acceptanceFailed: 'Не удалось сохранить согласие. Попробуйте ещё раз.',
+    acceptanceRegionLabel: 'Принятие политики',
   },
   marathonDetail: {
     backToCatalog: '← Все марафоны',
