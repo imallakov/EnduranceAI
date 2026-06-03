@@ -98,11 +98,12 @@ def process_strava_webhook(payload: dict):
     strava_id = kwargs['external_strava_id']
     existing = Activity.objects.filter(external_strava_id=strava_id).first()
 
+    new_activity = None
     if aspect_type == 'create':
         if existing:
             # Already imported (maybe through manual sync) — idempotent.
             return {'status': 'ignored', 'reason': 'already_exists'}
-        Activity.objects.create(user=conn.user, **kwargs)
+        new_activity = Activity.objects.create(user=conn.user, **kwargs)
         action = 'created'
     elif aspect_type == 'update':
         if existing:
@@ -111,8 +112,9 @@ def process_strava_webhook(payload: dict):
                     setattr(existing, k, v)
             existing.save()
             action = 'updated'
+            new_activity = existing
         else:
-            Activity.objects.create(user=conn.user, **kwargs)
+            new_activity = Activity.objects.create(user=conn.user, **kwargs)
             action = 'created_via_update'
     else:
         return {'status': 'ignored', 'reason': f'unknown_aspect:{aspect_type}'}
@@ -120,6 +122,18 @@ def process_strava_webhook(payload: dict):
     # Trigger metrics recalc (which in turn runs L1 + L1.5 plan adaptation)
     from apps.activities.tasks import recalculate_user_metrics
     recalculate_user_metrics.delay(str(conn.user_id))
+
+    # Detect and record a marathon race attempt if this activity matches
+    # the user's target. Idempotent (safe on update events that re-fire).
+    # Failures are non-fatal — the webhook still acknowledges the event.
+    if new_activity is not None:
+        try:
+            from apps.races.services import record_marathon_attempt
+            record_marathon_attempt(new_activity)
+        except Exception:
+            logger.exception(
+                "record_marathon_attempt failed for activity %s", new_activity.id,
+            )
 
     return {'status': 'ok', 'action': action, 'activity_id': strava_id}
 

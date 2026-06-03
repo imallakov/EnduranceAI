@@ -57,6 +57,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     current_tsb = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     training_weeks = models.SmallIntegerField(default=0, help_text='Weeks with training data')
 
+    # Consent for using anonymized aggregate data to improve the prediction
+    # model. Default False — the current Privacy Policy (v1.0.1) explicitly
+    # commits that we do NOT train models on user data without opt-in. This
+    # field is the infrastructure for that opt-in; UI surface comes later
+    # alongside a Privacy Policy v1.0.2 update.
+    analytics_opt_in = models.BooleanField(default=False)
+
     objects = UserManager()
 
     USERNAME_FIELD = 'email'

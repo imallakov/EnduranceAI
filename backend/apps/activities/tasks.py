@@ -46,6 +46,16 @@ def process_activity_file(self, user_id: str, file_bytes_hex: str,
 
         if is_valid:
             recalculate_user_metrics.delay(user_id)
+            # Detect/record marathon race attempt for manual uploads too —
+            # not just Strava. A runner might upload their FIT after a race
+            # if their watch didn't sync.
+            try:
+                from apps.races.services import record_marathon_attempt
+                record_marathon_attempt(activity)
+            except Exception:
+                logger.exception(
+                    "record_marathon_attempt failed for activity %s", activity.id,
+                )
 
         return {
             'status': 'ok',
