@@ -73,10 +73,32 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         old_target_id = self.request.user.target_marathon_id
+        old_target_date = self.request.user.target_race_date
         user = serializer.save()
         new_target_id = user.target_marathon_id
-        if new_target_id and new_target_id != old_target_id:
+        new_target_date = user.target_race_date
+
+        marathon_changed = bool(new_target_id) and new_target_id != old_target_id
+        date_changed = new_target_date != old_target_date
+
+        # New target marathon → fresh prediction so Dashboard isn't stale.
+        if marathon_changed:
             self._auto_create_prediction(user)
+
+        # Either marathon or race date changed → re-scan recent activities
+        # for race attempts. Handles the typo-fix case: user originally typed
+        # the wrong year/month, ran the race, the activity didn't match, the
+        # user now corrects the date — the existing activity should now
+        # register as an attempt.
+        if marathon_changed or date_changed:
+            from apps.races.services import backfill_race_attempts_for_user
+            try:
+                backfill_race_attempts_for_user(user)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "backfill_race_attempts failed for user %s", user.id,
+                )
 
     @staticmethod
     def _auto_create_prediction(user):
@@ -118,8 +140,20 @@ class OnboardingCompleteView(APIView):
         user.save(update_fields=['onboarding_completed'])
 
         if user.activities.exists() and user.target_marathon_id:
-            from apps.races.services import auto_create_prediction_for_target
+            from apps.races.services import (
+                auto_create_prediction_for_target,
+                backfill_race_attempts_for_user,
+            )
             auto_create_prediction_for_target(user)
+            # If the user uploaded historical activities before completing
+            # onboarding (e.g. their last race), this catches it.
+            try:
+                backfill_race_attempts_for_user(user)
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    "onboarding backfill failed for user %s", user.id,
+                )
 
         return Response({'ok': True})
 
