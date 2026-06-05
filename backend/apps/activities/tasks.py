@@ -106,7 +106,7 @@ def recalculate_user_metrics(user_id: str):
     from django.contrib.auth import get_user_model
     from apps.activities.models import Activity
     from apps.metrics.models import DailyMetrics
-    from ml.src.formulas import calc_vdot, calc_tss, update_ctl_atl, vdot_to_paces
+    from ml.src.formulas import calc_vdot, calc_tss, update_ctl_atl, vdot_to_paces, robust_vdot
     from datetime import date, timedelta
     import math
 
@@ -148,68 +148,74 @@ def recalculate_user_metrics(user_id: str):
     threshold_hr = user.threshold_hr
     threshold_pace = vdot_to_paces(float(user.current_vdot or 45)).get('T', 253)
 
-    # Recalculate vdot_estimate and tss per activity; build daily TSS map in same pass
+    # Materialise the queryset ONCE: we iterate it twice (TSS map +
+    # training-weeks) and we need the objects to write per-activity vdot/tss in
+    # a single bulk_update instead of one UPDATE per row (the old N-query loop).
+    acts = list(activities)
+
+    ninety_ago = date.today() - timedelta(days=90)
+    RECENT_VDOT_MIN_KM = 5.0
     daily_tss: dict = {}
-    for act in activities:
-        vdot = calc_vdot(float(act.distance_km) * 1000, act.duration_sec)
-        tss = calc_tss(
+    recent_vdots: list = []
+    for act in acts:
+        act.vdot_estimate = calc_vdot(float(act.distance_km) * 1000, act.duration_sec)
+        act.tss = calc_tss(
             act.duration_sec,
             act.avg_hr,
             threshold_hr,
             float(act.avg_pace_sec_per_km) if act.avg_pace_sec_per_km else None,
             threshold_pace,
         )
-        Activity.objects.filter(id=act.id).update(vdot_estimate=vdot, tss=tss)
         day = act.start_time.date()
-        daily_tss[day] = daily_tss.get(day, 0) + tss  # use computed tss, not stale act.tss
+        daily_tss[day] = daily_tss.get(day, 0) + act.tss
+        if day >= ninety_ago and float(act.distance_km) >= RECENT_VDOT_MIN_KM and act.vdot_estimate > 0:
+            recent_vdots.append(act.vdot_estimate)
 
-    # Recalculate CTL/ATL/TSB from start to today
+    # One write for all activities instead of N UPDATEs.
+    Activity.objects.bulk_update(acts, ['vdot_estimate', 'tss'], batch_size=500)
+
+    # Rebuild CTL/ATL/TSB from the first activity to today. The full rebuild is
+    # intentional: imports can be backdated (Strava history), and the EMA is
+    # causal from zero — seeding from a stored value would be wrong after a
+    # backdated insert. It's still just two bulk queries (delete + bulk_create).
     start_date = min(daily_tss.keys())
     end_date = date.today()
-    ctl, atl = 0.0, 0.0
+    ctl, atl, tsb = 0.0, 0.0, 0.0
     current_date = start_date
 
     DailyMetrics.objects.filter(user_id=user_id).delete()
     bulk = []
     while current_date <= end_date:
-        tss = daily_tss.get(current_date, 0.0)
-        ctl, atl = update_ctl_atl(ctl, atl, tss)
+        ctl, atl = update_ctl_atl(ctl, atl, daily_tss.get(current_date, 0.0))
         tsb = round(ctl - atl, 2)
         bulk.append(DailyMetrics(
-            user_id=user_id,
-            date=current_date,
-            ctl=ctl,
-            atl=atl,
-            tsb=tsb,
+            user_id=user_id, date=current_date, ctl=ctl, atl=atl, tsb=tsb,
         ))
         current_date += timedelta(days=1)
 
-    DailyMetrics.objects.bulk_create(bulk)
+    DailyMetrics.objects.bulk_create(bulk, batch_size=1000)
 
-    # Update rolling vdot (best in last 90 days)
-    from datetime import timedelta
-    ninety_ago = date.today() - timedelta(days=90)
-    recent = activities.filter(
-        start_time__gte=ninety_ago,
-        distance_km__gte=5,
-    ).order_by('-vdot_estimate').first()
+    # Robust current VDOT from recent efforts (replaces the single-best max,
+    # which over-estimated fitness off one fluky/downhill/GPS-short run).
+    best_vdot = robust_vdot(recent_vdots)
 
-    best_vdot = float(recent.vdot_estimate) if recent and recent.vdot_estimate else None
-    last_metrics = DailyMetrics.objects.filter(user_id=user_id).order_by('-date').first()
-
-    # Count distinct weeks with activity in last 52 weeks (meaningful training recency)
-    from datetime import timedelta as _td
-    one_year_ago = date.today() - _td(weeks=52)
-    training_weeks = len(set(
+    # Count distinct weeks with activity in last 52 weeks (meaningful training
+    # recency). Reuses the in-memory `acts` — no second DB hit.
+    one_year_ago = date.today() - timedelta(weeks=52)
+    training_weeks = len({
         a.start_time.isocalendar()[:2]
-        for a in activities
+        for a in acts
         if a.start_time.date() >= one_year_ago
-    ))
+    })
+
+    # ctl/atl/tsb hold the most recent day's values from the loop — no need to
+    # re-query the last DailyMetrics row.
+    has_metrics = bool(bulk)
     User.objects.filter(id=user_id).update(
         current_vdot=best_vdot,
-        current_ctl=float(last_metrics.ctl) if last_metrics else None,
-        current_atl=float(last_metrics.atl) if last_metrics else None,
-        current_tsb=float(last_metrics.tsb) if last_metrics else None,
+        current_ctl=ctl if has_metrics else None,
+        current_atl=atl if has_metrics else None,
+        current_tsb=tsb if has_metrics else None,
         training_weeks=training_weeks,
     )
 

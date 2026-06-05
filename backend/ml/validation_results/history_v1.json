@@ -1,0 +1,28 @@
+{
+  "features": [
+    "prev_finish",
+    "best_prior",
+    "mean_prior",
+    "n_prior",
+    "years_since_prev",
+    "trend_sec_per_year",
+    "prev_coeff",
+    "coeff",
+    "age",
+    "sex"
+  ],
+  "n_train": 587215,
+  "n_test": 179051,
+  "feature_importances": {
+    "prev_finish": 0.2992,
+    "best_prior": 0.0091,
+    "mean_prior": 0.5654,
+    "n_prior": 0.0201,
+    "years_since_prev": 0.0162,
+    "trend_sec_per_year": 0.0057,
+    "prev_coeff": 0.011,
+    "coeff": 0.0229,
+    "age": 0.0229,
+    "sex": 0.0275
+  }
+}

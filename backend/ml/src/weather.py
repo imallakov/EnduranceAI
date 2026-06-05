@@ -4,11 +4,41 @@ from django.conf import settings
 
 
 def compute_weather_index(temp_c: float, humidity_pct: float, wind_ms: float = 0.0) -> float:
-    base_temp = 10.0
-    temp_penalty = max(0.0, (temp_c - base_temp) * 0.004)
-    humidity_penalty = max(0.0, (humidity_pct - 60) * 0.001)
-    wind_bonus = min(0.01, wind_ms * 0.0005) if wind_ms > 3 else 0.0
-    return round(1.0 + temp_penalty + humidity_penalty - wind_bonus, 4)
+    """
+    Multiplicative slowdown factor for marathon finish time vs ideal conditions.
+    1.0 = no penalty; 1.08 = +8% slower.
+
+    Grounded in the heat-and-performance literature (Ely 2007, El Helou 2012),
+    fixing three flaws of the old linear formula:
+
+      1. Heat × humidity INTERACT. Humidity impairs sweat evaporation only when
+         it's already warm — so it amplifies the heat penalty above ~15 °C and
+         is near-irrelevant when cool (the old code penalised humidity even at
+         5 °C).
+      2. The heat penalty ACCELERATES above the optimum (quadratic), rather than
+         being linear — matching the sharp drop-off seen above ~20 °C.
+      3. Wind is a NET PENALTY, not a bonus. Drag rises with the square of air
+         speed, so on a loop / out-and-back the headwind leg costs more than the
+         tailwind leg saves. (The old code subtracted a "tailwind bonus", which
+         is backwards for any non-point-to-point course.)
+    """
+    OPT_TEMP = 10.0  # ~ideal racing temperature
+
+    # Effective (felt) temperature: humidity adds heat only when warm.
+    humidity_excess = max(0.0, humidity_pct - 50.0) / 100.0          # 0 .. ~0.5
+    effective_temp = temp_c + humidity_excess * max(0.0, temp_c - 15.0) * 0.9
+
+    dt = effective_temp - OPT_TEMP
+    if dt > 0:
+        temp_penalty = 0.0020 * dt + 0.00020 * dt * dt              # accelerating
+    else:
+        # Genuinely cold (below ~0 °C) costs a little; cool is otherwise ideal.
+        temp_penalty = 0.0010 * max(0.0, -dt - 10.0)
+
+    # Net wind penalty above a calm threshold (~2 m/s).
+    wind_penalty = 0.0015 * max(0.0, wind_ms - 2.0)
+
+    return round(1.0 + temp_penalty + wind_penalty, 4)
 
 
 def fetch_weather(lat: float, lon: float) -> dict | None:

@@ -25,6 +25,34 @@ RACE_HOUR_START = 8
 RACE_HOUR_END = 13  # inclusive
 
 
+@shared_task
+def generate_target_prediction(user_id: str):
+    """
+    Generate the user's target-marathon prediction in the background.
+
+    Wraps services.auto_create_prediction_for_target (which hits Open-Meteo for
+    race-day weather) so that no request thread — GET /dashboard, PATCH
+    /profile, POST /onboarding — blocks on an external call or writes a row
+    inside a read. Idempotent: skips if a prediction already exists for the
+    current target marathon, so repeated enqueues (e.g. dashboard refetches)
+    don't duplicate work.
+    """
+    from django.contrib.auth import get_user_model
+    from .models import Prediction
+    from .services import auto_create_prediction_for_target
+
+    User = get_user_model()
+    try:
+        user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return
+    if not (user.target_marathon_id and user.current_vdot):
+        return
+    if Prediction.objects.filter(user=user, marathon_id=user.target_marathon_id).exists():
+        return
+    auto_create_prediction_for_target(user)
+
+
 @shared_task(bind=True, max_retries=2, default_retry_delay=600)
 def fetch_race_weather(self, attempt_id: str):
     """

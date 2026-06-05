@@ -8,7 +8,7 @@ import {
   usePredictionsHistory,
   useCreatePrediction,
 } from '../hooks/usePredictions';
-import { useDashboard } from '../hooks/useDashboard';
+import { useAuth } from '../hooks/useAuth';
 import RadialGauge from '../components/charts/RadialGauge';
 import ComponentBar from '../components/charts/ComponentBar';
 import ShareStoryModal from '../components/share/ShareStoryModal';
@@ -65,6 +65,8 @@ function defaultRaceDate(): string {
 
 function featureLabel(f: string): string {
   const map: Record<string, string> = {
+    prior_marathon: 'Past marathon',
+    training_volume: 'Training volume',
     vdot: 'VDOT',
     course_difficulty: 'Course difficulty',
     weather_index: 'Weather',
@@ -485,9 +487,11 @@ const HeroResultCard: React.FC<{ pred: Prediction | PredictionResponse; onShare?
       {/* Subtitle row */}
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
         {ciMin != null && <span>{t.predictions.minConfidence(ciMin)}</span>}
-        {mode && (
-          <span style={{ color: mode === 'full' ? '#a5b4fc' : 'rgba(255,255,255,0.35)' }}>
-            {mode === 'full' ? t.predictions.mlModeFull : t.predictions.basicMode}
+        {mode && mode !== 'insufficient_data' && (
+          <span style={{ color: (mode === 'prior_marathon' || mode === 'tanda') ? '#a5b4fc' : 'rgba(255,255,255,0.35)' }}>
+            {mode === 'prior_marathon' ? t.predictions.tierPriorMarathon
+              : mode === 'tanda' ? t.predictions.tierTanda
+              : t.predictions.tierAnalytic}
           </span>
         )}
         {vdot != null && (
@@ -540,8 +544,14 @@ const BreakdownCard: React.FC<{ pred: Prediction | PredictionResponse }> = ({ pr
   // (≤ a few seconds). Only show ML row when it's a real signal — i.e. mode
   // is full AND correction exceeds the rounding-noise threshold.
   const snap = pred.features_snapshot;
-  const mode = (snap?.mode as string | undefined) ?? 'basic';
-  const showML = mode === 'full' && Math.abs(mlCorrRaw) >= 5;
+  const mode = (snap?.mode as string | undefined) ?? 'analytic';
+  const priorSec = snap?.prior_marathon_sec as number | undefined;
+  const weeklyKm = snap?.weekly_km as number | undefined;
+  const showAdj = (mode === 'prior_marathon' || mode === 'tanda') && Math.abs(mlCorrRaw) >= 5;
+  const adjLabel = mode === 'tanda' ? t.predictions.tandaAdjustment : t.predictions.priorAdjustment;
+  const adjSub = mode === 'tanda'
+    ? (typeof weeklyKm === 'number' ? `${weeklyKm} km/wk` : t.predictions.tierTandaShort)
+    : (priorSec ? formatTime(priorSec) : t.predictions.tierPriorShort);
   const mlCorr = mlCorrRaw;
 
   const tempC = snap?.temp_c as number | undefined;
@@ -596,11 +606,13 @@ const BreakdownCard: React.FC<{ pred: Prediction | PredictionResponse }> = ({ pr
         </div>
       </div>
 
-      {showML && (
+      {showAdj && (
         <div style={rowStyle}>
           <div>
-            <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{t.predictions.mlCorrection}</div>
-            <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 1 }}>{t.predictions.mlEnsemble}</div>
+            <div style={{ fontSize: 13.5, color: 'var(--text)' }}>{adjLabel}</div>
+            <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 1 }}>
+              {adjSub}
+            </div>
           </div>
           <div className="mono" style={{ fontSize: 14, fontWeight: 600, color: signColor(mlCorr) }}>
             {formatSignedSec(mlCorr)}
@@ -869,7 +881,7 @@ const PastPredictions: React.FC<{ predictions: Prediction[] }> = ({ predictions 
                     <PredMobileMetric label="Predicted" value={p.predicted_time_formatted} />
                     <PredMobileMetric label="Confidence" value={ciMin != null ? `±${ciMin} min` : '—'} />
                     <PredMobileMetric label="Created" value={fmtDate(p.created_at, lang)} />
-                    <PredMobileMetric label="Mode" value={mode ?? '—'} />
+                    <PredMobileMetric label="Model" value={mode === 'prior_marathon' ? t.predictions.tierPriorShort : mode === 'tanda' ? t.predictions.tierTandaShort : mode === 'analytic' ? t.predictions.tierAnalyticShort : '—'} />
                   </div>
                 </div>
               );
@@ -920,9 +932,9 @@ const PastPredictions: React.FC<{ predictions: Prediction[] }> = ({ predictions 
                       {ciMin != null ? `±${ciMin} min` : '—'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      {mode && (
-                        <span className={`pill ${mode === 'full' ? 'pill-soft-indigo' : 'pill-soft-muted'}`} style={{ fontSize: 11 }}>
-                          {mode}
+                      {mode && mode !== 'insufficient_data' && (
+                        <span className={`pill ${(mode === 'prior_marathon' || mode === 'tanda') ? 'pill-soft-indigo' : 'pill-soft-muted'}`} style={{ fontSize: 11 }}>
+                          {mode === 'prior_marathon' ? t.predictions.tierPriorShort : mode === 'tanda' ? t.predictions.tierTandaShort : t.predictions.tierAnalyticShort}
                         </span>
                       )}
                     </td>
@@ -944,9 +956,14 @@ const Predictions: React.FC = () => {
   const [freshResult, setFreshResult] = useState<PredictionResponse | null>(null);
   const { data: latest = null } = useLatestPrediction();
   const { data: history = [] } = usePredictionsHistory();
-  const { data: dashboard } = useDashboard();
+  const { user } = useAuth();
 
-  const vdot = (dashboard?.metrics?.vdot ?? null) as number | null;
+  // VDOT comes from the lightweight, app-wide profile (useAuth), not the heavy
+  // /dashboard aggregate. The page is route-gated so `user` is always loaded —
+  // a null VDOT therefore genuinely means "no activities yet" (the form's
+  // message is correct), rather than "the dashboard request happened to fail",
+  // which is what silently disabled the form before.
+  const vdot = user?.current_vdot != null ? Number(user.current_vdot) : null;
 
   return (
     <div className="page-pad" style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 32px' }}>

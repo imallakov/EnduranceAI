@@ -146,7 +146,7 @@ const HeroCard: React.FC<HeroCardProps> = ({
                 <span className="mono">{formatConfidence(prediction.confidence_interval_sec)}</span>
               )}
               <span>{t.dashboard.confidenceInterval} · </span>
-              <span>Daniels + XGBoost</span>
+              <span>{prediction.features_snapshot?.mode === 'prior_marathon' ? t.predictions.tierPriorMarathon : prediction.features_snapshot?.mode === 'tanda' ? t.predictions.tierTanda : t.predictions.tierAnalytic}</span>
               {isBasicMode && (
                 <span style={{
                   padding: '1px 7px', borderRadius: 4,

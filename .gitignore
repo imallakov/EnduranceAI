@@ -45,6 +45,14 @@ backend/ml/data/
 *.zip
 *.joblib
 *.pkl
+# EXCEPTION: the production model loaded by ml/src/predict.py (_get_history_model)
+# MUST be versioned with the code that loads it — otherwise prod has no Tier-A
+# model and silently degrades to a lower tier. Orphaned/experimental .joblib
+# files (xgb_repeat_v1, xgb_residual_v2, ridge_v1, xgb_v1) stay ignored.
+!backend/ml/models/xgb_history_v1.joblib
+
+# Scratch / temporary work — never commit
+scratch/
 
 # GPX/FIT files (excluding test fixtures and reference race routes)
 # Reference race routes (Berlin/London/Tokyo/etc.) live in backend/data/gpx/

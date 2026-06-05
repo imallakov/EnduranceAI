@@ -1,0 +1,80 @@
+{
+  "features": [
+    "prev_finish_sec",
+    "prev_coeff",
+    "coeff",
+    "age",
+    "sex",
+    "year_gap"
+  ],
+  "target": "next_marathon_finish_sec",
+  "train": "fall marathons, target year <=2017",
+  "n_train": 392893,
+  "n_test": 106551,
+  "test_metrics": [
+    {
+      "model": "next = prev",
+      "mae_min": 23.22,
+      "median_min": 15.78,
+      "within_10min_pct": 35.0,
+      "within_15min_pct": 48.2,
+      "bias_min": 0.74
+    },
+    {
+      "model": "next = prev*course_ratio",
+      "mae_min": 23.23,
+      "median_min": 15.75,
+      "within_10min_pct": 35.0,
+      "within_15min_pct": 48.3,
+      "bias_min": 0.59
+    },
+    {
+      "model": "XGB marathon->marathon",
+      "mae_min": 22.74,
+      "median_min": 16.65,
+      "within_10min_pct": 31.2,
+      "within_15min_pct": 45.8,
+      "bias_min": 2.47
+    }
+  ],
+  "by_year_gap": {
+    "1": {
+      "n": 66776,
+      "xgb_mae": 21.1,
+      "prev_mae": 21.28
+    },
+    "2": {
+      "n": 17772,
+      "xgb_mae": 23.78,
+      "prev_mae": 24.42
+    },
+    "3": {
+      "n": 8668,
+      "xgb_mae": 25.27,
+      "prev_mae": 25.9
+    },
+    "4": {
+      "n": 6322,
+      "xgb_mae": 27.19,
+      "prev_mae": 28.43
+    },
+    "5": {
+      "n": 4474,
+      "xgb_mae": 27.89,
+      "prev_mae": 29.83
+    },
+    "6": {
+      "n": 2539,
+      "xgb_mae": 29.86,
+      "prev_mae": 32.21
+    }
+  },
+  "feature_importances": {
+    "prev_finish_sec": 0.8541,
+    "prev_coeff": 0.0083,
+    "coeff": 0.0289,
+    "age": 0.0373,
+    "sex": 0.0639,
+    "year_gap": 0.0075
+  }
+}

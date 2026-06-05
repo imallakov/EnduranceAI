@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { login as apiLogin, register as apiRegister, logout as apiLogout, getProfile } from '../api/auth';
+import { refreshAccessToken } from '../api/client';
 import type { UserProfile, LoginPayload, RegisterPayload } from '../types/api';
 
 interface AuthContextValue {
@@ -18,19 +19,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // On mount: restore session from localStorage
+  // On mount: there's no access token in memory after a reload, so mint one
+  // from the httpOnly refresh cookie, then load the profile. No valid cookie
+  // (or it expired) → the refresh 401s and we stay logged out.
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-    getProfile()
+    refreshAccessToken()
+      .then(() => getProfile())
       .then(setUser)
       .catch(() => {
-        // Interceptor already tried refresh; if still failing → clear session
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        // Not authenticated — leave user null.
       })
       .finally(() => setIsLoading(false));
   }, []);

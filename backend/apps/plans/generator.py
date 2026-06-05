@@ -4,12 +4,16 @@ Training plan generator following Jack Daniels 4-phase structure.
 from datetime import date, timedelta
 from ml.src.formulas import vdot_to_paces, format_pace
 
-PHASE_RATIOS = [
-    ('base', 0.20),
-    ('early_quality', 0.25),
-    ('late_quality', 0.30),
-    ('taper', 0.25),
-]
+# Relative weights of the three BUILD phases (renormalised from Daniels' classic
+# split). The taper is handled separately as a FIXED 2-3 weeks — see
+# _phase_schedule(). The old code made taper a fixed 25% of the plan, which on a
+# 24-week plan is 6 weeks of taper — far too long, the runner detrains.
+_BUILD_WEIGHTS = [('base', 0.27), ('early_quality', 0.33), ('late_quality', 0.40)]
+
+# Hard cap on any single long run. Past ~32 km the marginal aerobic gain drops
+# while injury/recovery cost climbs sharply for recreational runners, so a
+# volume ramp must never push the long run beyond this.
+LONG_RUN_ABS_CAP_KM = 32.0
 
 WORKOUT_TEMPLATES = {
     'base': [
@@ -54,8 +58,41 @@ WORKOUT_TEMPLATES = {
 def _scale_distances(workouts: list, scale: float) -> list:
     result = []
     for wtype, dist in workouts:
-        result.append((wtype, round(dist * scale, 1) if dist else None))
+        if not dist:
+            result.append((wtype, None))
+            continue
+        scaled = round(dist * scale, 1)
+        if wtype == 'long':
+            scaled = min(scaled, LONG_RUN_ABS_CAP_KM)   # never overshoot the cap
+        result.append((wtype, scaled))
     return result
+
+
+def _phase_schedule(total_weeks: int) -> list:
+    """
+    Return a list of phase names, one per week, length == total_weeks.
+
+    Taper is a FIXED 2-3 weeks (3 for plans >= 14 weeks, else 2), capped so at
+    least one build week remains. The remaining build weeks are split across
+    base/early/late by _BUILD_WEIGHTS, with the all-important late-quality phase
+    absorbing any rounding remainder.
+    """
+    taper_weeks = min(3 if total_weeks >= 14 else 2, max(1, total_weeks - 1))
+    build_weeks = total_weeks - taper_weeks
+
+    base_w = max(1, round(build_weeks * _BUILD_WEIGHTS[0][1]))
+    early_w = max(1, round(build_weeks * _BUILD_WEIGHTS[1][1]))
+    late_w = build_weeks - base_w - early_w
+
+    if late_w < 1:
+        # Too few build weeks for all three phases — keep them in order.
+        names = ['base', 'early_quality', 'late_quality'][:build_weeks]
+        while len(names) < build_weeks:
+            names.append('late_quality')
+        return names + ['taper'] * taper_weeks
+
+    return (['base'] * base_w + ['early_quality'] * early_w
+            + ['late_quality'] * late_w + ['taper'] * taper_weeks)
 
 
 def generate_plan(user, race_date: date, days_per_week: int = 4,
@@ -84,40 +121,38 @@ def generate_plan(user, race_date: date, days_per_week: int = 4,
     # Scale weekly volume based on days_per_week (baseline = 4 days)
     volume_scale = days_per_week / 4.0
 
-    weeks = []
-    week_num = 1
+    schedule = _phase_schedule(total_weeks)
+    active_days = _select_days(days_per_week)
 
-    for phase_name, ratio in PHASE_RATIOS:
-        phase_weeks = max(1, round(total_weeks * ratio))
+    weeks = []
+    build_idx = 0   # 0-based index across build weeks → continuous ramp
+    taper_idx = 0   # 0-based index across taper weeks → declining volume
+
+    for week_num, phase_name in enumerate(schedule, start=1):
         template = WORKOUT_TEMPLATES[phase_name]
 
-        # Select days for this many runs per week
-        active_days = _select_days(days_per_week)
-
-        for pw in range(phase_weeks):
-            if cutback_enabled:
-                # 3:1 pattern — ramp 3 weeks, recover 1 week
-                ramp_factor = 1.0 + (pw % 4) * 0.08 if pw % 4 != 3 else 0.85
+        if phase_name == 'taper':
+            # Volume comes DOWN through the taper; the race week is lightest.
+            ramp_factor = max(0.40, 0.70 - 0.13 * taper_idx)
+            taper_idx += 1
+        else:
+            # Continuous progressive ramp across the WHOLE build (not reset at
+            # each phase boundary, which used to make volume sawtooth DOWN when
+            # entering a new phase). +2.5%/week, capped at +40%, with a 3:1
+            # cutback week for recovery.
+            progression = 1.0 + min(0.40, 0.025 * build_idx)
+            if cutback_enabled and build_idx % 4 == 3:
+                ramp_factor = progression * 0.80
             else:
-                # Linear progression without cutbacks
-                ramp_factor = 1.0 + pw * 0.05
-            workouts_raw = _scale_distances(template, volume_scale * ramp_factor)
+                ramp_factor = progression
+            build_idx += 1
 
-            week_workouts = []
-            total_km = 0.0
-            for day_idx, (wtype, dist) in enumerate(workouts_raw):
-                if wtype == 'rest':
-                    if day_idx not in active_days:
-                        week_workouts.append({
-                            'day_of_week': day_idx,
-                            'workout_type': 'rest',
-                            'distance_km': None,
-                            'pace_min_sec': None,
-                            'pace_max_sec': None,
-                            'structure': {},
-                        })
-                    continue
+        workouts_raw = _scale_distances(template, volume_scale * ramp_factor)
 
+        week_workouts = []
+        total_km = 0.0
+        for day_idx, (wtype, dist) in enumerate(workouts_raw):
+            if wtype == 'rest':
                 if day_idx not in active_days:
                     week_workouts.append({
                         'day_of_week': day_idx,
@@ -127,31 +162,37 @@ def generate_plan(user, race_date: date, days_per_week: int = 4,
                         'pace_max_sec': None,
                         'structure': {},
                     })
-                    continue
+                continue
 
-                pace_min, pace_max, structure = _workout_paces(wtype, paces, dist)
+            if day_idx not in active_days:
                 week_workouts.append({
                     'day_of_week': day_idx,
-                    'workout_type': wtype,
-                    'distance_km': dist,
-                    'pace_min_sec': pace_min,
-                    'pace_max_sec': pace_max,
-                    'structure': structure,
+                    'workout_type': 'rest',
+                    'distance_km': None,
+                    'pace_min_sec': None,
+                    'pace_max_sec': None,
+                    'structure': {},
                 })
-                if dist:
-                    total_km += dist
+                continue
 
-            weeks.append({
-                'week_number': week_num,
-                'phase': phase_name,
-                'total_km': round(total_km, 1),
-                'workouts': week_workouts,
+            pace_min, pace_max, structure = _workout_paces(wtype, paces, dist)
+            week_workouts.append({
+                'day_of_week': day_idx,
+                'workout_type': wtype,
+                'distance_km': dist,
+                'pace_min_sec': pace_min,
+                'pace_max_sec': pace_max,
+                'structure': structure,
             })
-            week_num += 1
-            if week_num > total_weeks:
-                break
-        if week_num > total_weeks:
-            break
+            if dist:
+                total_km += dist
+
+        weeks.append({
+            'week_number': week_num,
+            'phase': phase_name,
+            'total_km': round(total_km, 1),
+            'workouts': week_workouts,
+        })
 
     return weeks
 
@@ -558,16 +599,27 @@ def _workout_paces(wtype: str, paces: dict, dist: float | None) -> tuple:
         }
     if wtype == 'interval':
         p = paces['I']
-        reps = 6
-        rep_dist = 1000
+        # Reps scale with the session size (which already scales with the
+        # runner's volume), but I-pace work is capped at ~8 km — Daniels limits
+        # VO2max work to the lesser of 8% of weekly volume or 10 km, and a fixed
+        # 6×1000 ignores both the beginner who'd be over-cooked and the fit
+        # runner who needs more.
+        warmup, cooldown = 2.0, 2.0
+        work_km = max(3.0, min((dist or 12) - warmup - cooldown, 8.0))
+        reps = max(3, int(round(work_km)))     # 1000 m reps
         return p, int(p * 1.05), {
-            'intervals': [{'reps': reps, 'dist_m': rep_dist, 'pace': format_pace(p)}],
+            'intervals': [{'reps': reps, 'dist_m': 1000, 'pace': format_pace(p)}],
             'recovery': '90s jog',
+            'warmup_km': warmup,
+            'cooldown_km': cooldown,
         }
     if wtype == 'repetition':
         p = paces['R']
+        # R-pace volume is small and capped (~3 km of fast 200s).
+        work_km = max(1.2, min((dist or 8) * 0.3, 3.0))
+        reps = max(6, int(round(work_km / 0.2)))   # 200 m reps
         return p, int(p * 1.05), {
-            'reps': 8, 'dist_m': 200, 'pace': format_pace(p), 'recovery': 'walk 200m',
+            'reps': reps, 'dist_m': 200, 'pace': format_pace(p), 'recovery': 'walk 200m',
         }
     if wtype == 'marathon_pace':
         p = paces['M']

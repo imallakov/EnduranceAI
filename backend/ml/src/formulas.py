@@ -61,6 +61,56 @@ def vdot_to_paces(vdot: float) -> dict:
     }
 
 
+def tanda_marathon_pace_sec(weekly_km: float, train_pace_sec_per_km: float) -> float | None:
+    """
+    Tanda (2011) marathon-pace prediction from training indices:
+
+        Pm = 17.1 + 140.0 * exp(-0.0053 * K) + 0.55 * P      [sec/km]
+
+    K = mean weekly distance (km/week), P = mean training pace (sec/km), both
+    over the ~8 weeks before the race. Returns predicted mean marathon pace
+    (sec/km), or None on nonsensical input.
+
+    Re-validated on Strava data (Tanda 2022, J. Human Sport & Exercise): RMSE
+    ~5-8 min for recreational marathoners in the ~2:47-3:36 range, near-zero
+    bias. It over-predicts (too slow) for sub-2:47 runners, so callers should
+    widen the interval there. Unlike Daniels-from-a-single-run, it inherently
+    rewards training VOLUME — the endurance signal a VDOT estimate misses.
+    """
+    import math
+    if weekly_km <= 0 or train_pace_sec_per_km <= 0:
+        return None
+    return 17.1 + 140.0 * math.exp(-0.0053 * weekly_km) + 0.55 * train_pace_sec_per_km
+
+
+def robust_vdot(vdots: list) -> float | None:
+    """
+    Robust current-VDOT estimate from recent per-run VDOTs.
+
+    The naive "best single run over 90 days" is a max-of-noise estimator: one
+    GPS-short-measured course, a steep downhill, or a single fluky reading
+    spikes it — and calc_vdot already assumes every run was a maximal effort.
+    Real fitness is a *repeatable* level, so we estimate it that way:
+
+      - 1 value:    that value (low confidence)
+      - 2-3 values: the median (a single high outlier can't dominate)
+      - >=4 values: drop the single best (fluke guard), average the next three
+
+    Input need not be sorted; non-positive values are ignored.
+    """
+    import statistics
+
+    vals = sorted((float(v) for v in vdots if v and float(v) > 0), reverse=True)
+    if not vals:
+        return None
+    if len(vals) == 1:
+        return round(vals[0], 2)
+    if len(vals) <= 3:
+        return round(statistics.median(vals), 2)
+    top = vals[1:4]               # ranks 2-4, excluding the possible outlier
+    return round(sum(top) / len(top), 2)
+
+
 def calc_tss(duration_sec: float, avg_hr: int | None,
              threshold_hr: int, avg_pace_sec_per_km: float | None = None,
              threshold_pace: float | None = None) -> float:

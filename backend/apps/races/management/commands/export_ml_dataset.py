@@ -33,6 +33,9 @@ COLUMNS = [
     # Fitness snapshots (frozen)
     'vdot_snapshot', 'ctl_snapshot', 'atl_snapshot', 'tsb_snapshot',
     'plan_compliance_pct',
+    # Training-load snapshot (16-week build-up) — the volume/endurance signal
+    'avg_weekly_km_16w', 'peak_weekly_km_16w', 'total_km_16w',
+    'long_runs_25k_plus', 'peak_long_run_km',
     # Course
     'distance_km', 'elevation_gain_m', 'elevation_loss_m',
     'course_coefficient_used',
@@ -87,6 +90,7 @@ class Command(BaseCommand):
 def _row(a: MarathonAttempt) -> dict:
     """Map a MarathonAttempt to a flat CSV row."""
     weather = a.weather_snapshot or {}
+    training = a.training_snapshot or {}
     user = a.user
     marathon = a.marathon
     pred = a.prediction
@@ -120,6 +124,12 @@ def _row(a: MarathonAttempt) -> dict:
         'atl_snapshot': float(a.atl_snapshot) if a.atl_snapshot else None,
         'tsb_snapshot': float(a.tsb_snapshot) if a.tsb_snapshot else None,
         'plan_compliance_pct': a.plan_compliance_pct,
+
+        'avg_weekly_km_16w': training.get('avg_weekly_km'),
+        'peak_weekly_km_16w': training.get('peak_weekly_km'),
+        'total_km_16w': training.get('total_km'),
+        'long_runs_25k_plus': training.get('long_runs_25k_plus'),
+        'peak_long_run_km': training.get('peak_long_run_km'),
 
         'distance_km': distance_km,
         'elevation_gain_m': float(marathon.elevation_gain_m) if marathon.elevation_gain_m else None,

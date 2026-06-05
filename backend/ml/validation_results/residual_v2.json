@@ -1,0 +1,47 @@
+{
+  "features": [
+    "vdot",
+    "age",
+    "sex"
+  ],
+  "target": "residual = finish - daniels_equiv*course*weather",
+  "train": "Boston 2015+2016",
+  "n_train": 52558,
+  "test_2017": {
+    "riegel": {
+      "mae_min": 10.02,
+      "median_min": 6.69,
+      "within_5min_pct": 39.6,
+      "within_10min_pct": 65.0,
+      "bias_min": -7.15
+    },
+    "daniels": {
+      "mae_min": 10.99,
+      "median_min": 7.33,
+      "within_5min_pct": 37.2,
+      "within_10min_pct": 60.7,
+      "bias_min": -8.88
+    },
+    "analytic": {
+      "mae_min": 14.34,
+      "median_min": 14.56,
+      "within_5min_pct": 14.9,
+      "within_10min_pct": 31.7,
+      "bias_min": 11.1
+    },
+    "hybrid": {
+      "mae_min": 9.46,
+      "median_min": 8.1,
+      "within_5min_pct": 31.2,
+      "within_10min_pct": 61.0,
+      "bias_min": 2.51
+    }
+  },
+  "test_2024": null,
+  "feature_importances": {
+    "vdot": 0.2834,
+    "age": 0.0619,
+    "sex": 0.6547
+  },
+  "note": "VDOT here is derived from the same-day Half split; in production it comes from a training effort weeks before the race, so real CIs should be wider than this holdout suggests."
+}
