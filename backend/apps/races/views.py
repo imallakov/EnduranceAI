@@ -7,6 +7,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import ScopedRateThrottle
 from django.db.models import Max, Sum, Q, Count
 from django.conf import settings
 
@@ -310,6 +311,8 @@ class PredictionDetailView(generics.RetrieveAPIView):
 class PredictionCreateView(APIView):
     """POST /api/predictions/"""
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'prediction'
 
     def post(self, request):
         ser = PredictionRequestSerializer(data=request.data)
@@ -365,8 +368,12 @@ class PredictionCreateView(APIView):
 
         from ml.src.predict import predict_finish_time
         from ml.src.formulas import race_readiness_score as calc_readiness
+        from .services import get_prior_marathon_features, get_training_load
 
-        result = predict_finish_time(user, marathon, race_date, temp_c, humidity_pct, wind_ms)
+        prior = get_prior_marathon_features(user, race_date, target_marathon=marathon)
+        training_load = get_training_load(user, race_date)
+        result = predict_finish_time(user, marathon, race_date, temp_c, humidity_pct, wind_ms,
+                                     prior_marathon=prior, training_load=training_load)
 
         # Race readiness
         readiness = None
@@ -398,12 +405,15 @@ class PredictionCreateView(APIView):
             confidence_interval_sec=result['confidence_interval_sec'],
             race_readiness_score=readiness['score'] if readiness else None,
             feature_importance=result.get('feature_importance', []),
-            model_version='hybrid_v1',
+            model_version='tiered_v1',
             features_snapshot={
                 'vdot': float(user.current_vdot),
                 'temp_c': temp_c,
                 'humidity_pct': humidity_pct,
                 'mode': result['mode'],
+                'tier': result.get('tier'),
+                'prior_marathon_sec': prior['finish_sec'] if prior else None,
+                'weekly_km': training_load['weekly_km'] if training_load else None,
             },
         )
 

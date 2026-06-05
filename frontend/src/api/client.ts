@@ -3,73 +3,61 @@ import axios, { type AxiosRequestConfig } from 'axios';
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000';
 
-// IMPORTANT: do NOT set a default Content-Type here. Axios auto-detects
-// the right value per request body type:
-//   - plain object  →  application/json
-//   - FormData      →  multipart/form-data; boundary=...
-//   - string        →  text/plain
-// A hard-coded default would override the multipart boundary and break
-// every file upload with "No file provided" on the backend.
+// ── Auth model ────────────────────────────────────────────────────────────
+// The ACCESS token lives in memory only (a module variable), never in
+// localStorage — so an XSS payload can't read it out of storage, and it's
+// short-lived anyway. The long-lived REFRESH token is an httpOnly cookie the
+// browser attaches automatically (withCredentials); JS can't read it at all.
+let accessToken: string | null = null;
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+// IMPORTANT: do NOT set a default Content-Type here. Axios auto-detects the
+// right value per request body (object→json, FormData→multipart, string→text);
+// a hard-coded default would break the multipart boundary on file uploads.
 export const apiClient = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true, // send/receive the httpOnly refresh cookie
 });
 
-// JWT request interceptor — attaches token from localStorage
+// Attach the in-memory access token to every request.
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
 
-// ── Token refresh — single-flight + rotation-aware ────────────────────
-//
-// Backend has ROTATE_REFRESH_TOKENS=True + BLACKLIST_AFTER_ROTATION=True,
-// so each successful refresh issues a NEW refresh token AND blacklists
-// the old one. Two failure modes if not handled:
-//
-//   1. We forget to save the new refresh → next refresh sends a
-//      blacklisted token → 401 → user kicked out.
-//   2. Multiple concurrent 401s (e.g. parallel Dashboard requests) fire
-//      multiple refresh requests in parallel. Backend blacklists the
-//      original refresh after the first one wins; the other 2-3 fail.
-//
-// Solution: a single in-flight refresh promise that all 401-callers wait
-// on. The first 401 starts the refresh; everyone else awaits the same
-// promise and re-uses the new access token.
-
+// ── Token refresh — single-flight ─────────────────────────────────────────
+// One in-flight refresh that all concurrent 401-callers await, so parallel
+// requests don't each fire a refresh (which, with rotation + blacklist, would
+// invalidate each other). The refresh token rides in the httpOnly cookie, so
+// the request carries no body — just credentials.
 let refreshInFlight: Promise<string> | null = null;
 
-async function refreshAccessToken(): Promise<string> {
+export async function refreshAccessToken(): Promise<string> {
   if (refreshInFlight) return refreshInFlight;
-
-  const refresh = localStorage.getItem('refresh_token');
-  if (!refresh) throw new Error('No refresh token');
-
   refreshInFlight = (async () => {
     try {
-      // Use bare axios (not apiClient) to avoid recursing through our
-      // own interceptor while we're still inside it.
-      const { data } = await axios.post(`${BASE_URL}/api/auth/token/refresh/`, { refresh });
-      localStorage.setItem('access_token', data.access);
-      // SimpleJWT returns a new refresh on every rotation — must persist it
-      // or the next call will send a blacklisted token.
-      if (data.refresh) {
-        localStorage.setItem('refresh_token', data.refresh);
-      }
-      return data.access as string;
+      // Bare axios (not apiClient) to skip our own interceptors; withCredentials
+      // so the browser sends the httpOnly refresh cookie.
+      const { data } = await axios.post(
+        `${BASE_URL}/api/auth/token/refresh/`, {}, { withCredentials: true },
+      );
+      accessToken = data.access as string;
+      return accessToken;
     } finally {
-      // Clear immediately so the NEXT 401 (after a future expiry) starts
-      // a fresh refresh — not awaits a stale resolved promise.
       refreshInFlight = null;
     }
   })();
-
   return refreshInFlight;
 }
 
-// JWT response interceptor — refresh access on 401, retry the original
+// Response interceptor — on 401, refresh the access token once and retry.
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -78,7 +66,7 @@ apiClient.interceptors.response.use(
       error.response?.status === 401 &&
       original &&
       !original._retry &&
-      // Avoid infinite loop if the refresh endpoint itself returns 401
+      // Avoid an infinite loop if the refresh endpoint itself returns 401.
       !(original.url ?? '').includes('/api/auth/token/refresh/')
     ) {
       original._retry = true;
@@ -88,12 +76,9 @@ apiClient.interceptors.response.use(
         (original.headers as Record<string, string>).Authorization = `Bearer ${newAccess}`;
         return apiClient(original);
       } catch {
-        // Refresh failed — refresh is genuinely expired/blacklisted.
-        // Clear everything so the user has to log in again.
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        // Hard-redirect to login (router not accessible from here).
-        // Only redirect if we're not already on login/register to avoid loop.
+        // Refresh failed — the cookie is gone/expired/blacklisted. Drop the
+        // in-memory token and bounce to login (router not reachable here).
+        accessToken = null;
         const path = window.location.pathname;
         if (!path.startsWith('/login') && !path.startsWith('/register')) {
           window.location.assign('/login');
@@ -101,5 +86,5 @@ apiClient.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );

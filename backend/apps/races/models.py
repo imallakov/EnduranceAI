@@ -133,6 +133,16 @@ class MarathonAttempt(models.Model):
     # from Marathon.avg_temp_by_month, which is a multi-year climate norm.
     weather_snapshot = models.JSONField(default=dict, blank=True)
 
+    # ── Training-load snapshot (frozen) ─────────────────────────────────────
+    # 16-week build-up features, computed once at attempt time. This is the
+    # single richest signal the current predictor ignores — weekly km curve,
+    # long-run count/peak, average + peak volume. Stored as JSON so we can add
+    # features later without a migration. The goal: every completed attempt
+    # becomes a trainable (training-load → finish) row, so the v2 model can
+    # finally learn what a year of training (or not) does — see the predictor
+    # critique. Empty dict until backfilled / first computed.
+    training_snapshot = models.JSONField(default=dict, blank=True)
+
     # ── Plan compliance ─────────────────────────────────────────────────────
     # Percentage of planned workouts in the 12 weeks leading up to race that
     # were actually completed (linked to an activity). Computed once on

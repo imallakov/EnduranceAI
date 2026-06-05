@@ -7,7 +7,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from django.contrib.auth import get_user_model
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -19,42 +21,102 @@ from .serializers import (
 User = get_user_model()
 
 
+def _set_refresh_cookie(response, refresh_token):
+    """Attach the rotating refresh token as an httpOnly, path-scoped cookie."""
+    response.set_cookie(
+        settings.REFRESH_COOKIE_NAME,
+        str(refresh_token),
+        max_age=int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds()),
+        httponly=True,
+        secure=settings.REFRESH_COOKIE_SECURE,
+        samesite=settings.REFRESH_COOKIE_SAMESITE,
+        path=settings.REFRESH_COOKIE_PATH,
+    )
+
+
+def _clear_refresh_cookie(response):
+    response.delete_cookie(settings.REFRESH_COOKIE_NAME, path=settings.REFRESH_COOKIE_PATH)
+
+
 class RegisterView(generics.CreateAPIView):
     """POST /api/auth/register/ → {access, refresh, user}"""
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'register'
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         refresh = RefreshToken.for_user(user)
-        return Response({
+        response = Response({
             'access': str(refresh.access_token),
-            'refresh': str(refresh),
             'user': UserProfileSerializer(user).data,
         }, status=status.HTTP_201_CREATED)
+        _set_refresh_cookie(response, refresh)   # httpOnly cookie, not body
+        return response
 
 
 class LoginView(TokenObtainPairView):
-    """POST /api/auth/login/ → {access, refresh, user}"""
+    """POST /api/auth/login/ → {access, user} (+ refresh as httpOnly cookie)"""
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if (response.status_code == 200 and isinstance(response.data, dict)
+                and 'refresh' in response.data):
+            _set_refresh_cookie(response, response.data.pop('refresh'))
+        return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    """POST /api/auth/token/refresh/ → {access} (refresh comes from the cookie).
+
+    Reads the refresh token from the httpOnly cookie (not the body), rotates it
+    (ROTATE_REFRESH_TOKENS=True blacklists the old one), sets the new refresh
+    cookie, and returns only the new access token in the body.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        refresh = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
+        if not refresh:
+            return Response({'detail': 'No refresh token.'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        serializer = self.get_serializer(data={'refresh': refresh})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except (InvalidToken, TokenError):
+            resp = Response({'detail': 'Invalid or expired refresh token.'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+            _clear_refresh_cookie(resp)   # stale cookie → drop it
+            return resp
+
+        data = serializer.validated_data
+        response = Response({'access': data['access']}, status=status.HTTP_200_OK)
+        if data.get('refresh'):           # rotation issued a new refresh token
+            _set_refresh_cookie(response, data['refresh'])
+        return response
 
 
 class LogoutView(APIView):
-    """POST /api/auth/logout/ → 204"""
-    permission_classes = [IsAuthenticated]
+    """POST /api/auth/logout/ → 204. Blacklists the cookie's refresh, clears it."""
+    permission_classes = [AllowAny]   # must work even if the access token expired
 
     def post(self, request):
-        try:
-            refresh_token = request.data.get('refresh')
-            if refresh_token:
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-        except Exception:
-            pass
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        refresh = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
+        if refresh:
+            try:
+                RefreshToken(refresh).blacklist()
+            except Exception:
+                pass
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        _clear_refresh_cookie(response)
+        return response
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
@@ -102,8 +164,10 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     @staticmethod
     def _auto_create_prediction(user):
-        from apps.races.services import auto_create_prediction_for_target
-        auto_create_prediction_for_target(user)
+        # Enqueue (don't block the PATCH on Open-Meteo). The worker creates the
+        # prediction; the Dashboard picks it up on its next load.
+        from apps.races.tasks import generate_target_prediction
+        generate_target_prediction.delay(str(user.id))
 
 
 class ChangePasswordView(APIView):
@@ -140,13 +204,12 @@ class OnboardingCompleteView(APIView):
         user.save(update_fields=['onboarding_completed'])
 
         if user.activities.exists() and user.target_marathon_id:
-            from apps.races.services import (
-                auto_create_prediction_for_target,
-                backfill_race_attempts_for_user,
-            )
-            auto_create_prediction_for_target(user)
+            from apps.races.services import backfill_race_attempts_for_user
+            from apps.races.tasks import generate_target_prediction
+            # Prediction generation hits Open-Meteo → enqueue, don't block POST.
+            generate_target_prediction.delay(str(user.id))
             # If the user uploaded historical activities before completing
-            # onboarding (e.g. their last race), this catches it.
+            # onboarding (e.g. their last race), this catches it (DB-only, fast).
             try:
                 backfill_race_attempts_for_user(user)
             except Exception:

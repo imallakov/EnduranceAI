@@ -28,7 +28,7 @@ export interface UserProfile {
 // ── Auth ──────────────────────────────────────────────────────────────
 export interface AuthResponse {
   access: string;
-  refresh: string;
+  // refresh token is delivered as an httpOnly cookie, not in the body
   user: UserProfile;
 }
 

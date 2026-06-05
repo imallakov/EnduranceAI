@@ -108,6 +108,133 @@ def _fail_cache_key(user_id, marathon_id):
     return f"auto_pred_fail:{user_id}:{marathon_id}"
 
 
+# Don't reuse a prior result older than this — the repeat model was trained on
+# 1-6 year gaps, and beyond that a stale time says little about current fitness
+# (a lot can change in 7+ years). Past this we fall back to the analytic tier.
+_PRIOR_MAX_GAP_YEARS = 7.0
+
+
+def get_prior_marathon_features(user, target_race_date=None, target_marathon=None):
+    """
+    The runner's marathon HISTORY as the Tier-A input. Returns a feature dict
+    for the history model, or None if there's no usable prior.
+
+    Uses ALL completed full-marathon attempts (not just the last), so a single
+    stale result is cushioned by the broader picture:
+      - prev_finish / prev_coeff / years_since_prev: the ANCHOR — the most
+        recent attempt at the SAME target marathon if available (cleanest
+        signal), else the most recent attempt overall.
+      - best_prior / mean_prior / n_prior: across all valid priors.
+      - trend_sec_per_year: improvement/decline from first to most recent prior.
+      - same_marathon: whether any prior is at the target course (tightens CI).
+
+    Validity: full-marathon distance, sane finish, anchor within
+    _PRIOR_MAX_GAP_YEARS; priors older than 10 y are ignored entirely.
+    """
+    from datetime import date
+    from .models import MarathonAttempt
+
+    ref = target_race_date or date.today()
+    target_pk = getattr(target_marathon, 'pk', None)
+
+    qs = (MarathonAttempt.objects
+          .filter(user=user, status='completed', actual_time_sec__isnull=False)
+          .select_related('marathon')
+          .order_by('race_date'))          # ascending (oldest first)
+
+    priors = []  # dicts, chronological
+    for att in qs:
+        dist = float(att.marathon.distance_km or 0)
+        if not (40.0 <= dist <= 45.0):
+            continue
+        finish = int(att.actual_time_sec)
+        if not (5400 <= finish <= 36000):   # 1:30 .. 10:00, same as training clean
+            continue
+        gap = max(0.0, (ref - att.race_date).days / 365.25)
+        if gap > 10.0:                       # ancient — ignore entirely
+            continue
+        priors.append({
+            'date': att.race_date, 'finish': finish, 'gap': gap,
+            'coeff': float(att.course_coefficient_used
+                           or att.marathon.difficulty_coefficient or 1.0),
+            'marathon_id': att.marathon_id,
+        })
+
+    if not priors:
+        return None
+
+    # Anchor = most recent same-course prior (if any, within the staleness cap),
+    # else most recent overall. Require the anchor to be recent enough.
+    same = [p for p in priors if target_pk is not None and p['marathon_id'] == target_pk
+            and p['gap'] <= _PRIOR_MAX_GAP_YEARS]
+    recent = priors[-1]
+    if recent['gap'] > _PRIOR_MAX_GAP_YEARS and not same:
+        return None
+    anchor = same[-1] if same else recent
+
+    finishes = [p['finish'] for p in priors]
+    n = len(priors)
+    span_years = (priors[-1]['date'] - priors[0]['date']).days / 365.25
+    trend = ((priors[-1]['finish'] - priors[0]['finish']) / span_years
+             if span_years > 0 else 0.0)
+
+    return {
+        'finish_sec': anchor['finish'],          # display / feature_importance
+        'prev_finish': anchor['finish'],
+        'prev_coeff': anchor['coeff'],
+        'years_since_prev': round(anchor['gap'], 2),
+        'best_prior': float(min(finishes)),
+        'mean_prior': round(sum(finishes) / n, 1),
+        'n_prior': n,
+        'trend_sec_per_year': round(trend, 1),
+        'same_marathon': bool(same),
+    }
+
+
+def get_training_load(user, race_date=None, weeks: int = 8):
+    """
+    8-week training-load summary for the Tanda tier (Tier A.5).
+
+    Returns {weekly_km, train_pace_sec, weeks_with_data} over the most recent
+    `weeks` weeks ending today (never looks into the future for a race that
+    hasn't happened — Tanda predicts from CURRENT training). None if no runs.
+
+    weekly_km    = total distance / weeks
+    train_pace_sec = total duration / total distance  (overall mean training pace)
+    """
+    from datetime import date, timedelta
+
+    ref = race_date or date.today()
+    end = min(ref, date.today())
+    start = end - timedelta(weeks=weeks)
+
+    rows = user.activities.filter(
+        is_valid=True,
+        start_time__date__gte=start,
+        start_time__date__lt=end,
+    ).values_list('distance_km', 'duration_sec', 'start_time')
+
+    total_km = 0.0
+    total_sec = 0.0
+    iso_weeks = set()
+    for dist, dur, st in rows:
+        d = float(dist or 0)
+        s = float(dur or 0)
+        if d <= 0 or s <= 0:
+            continue
+        total_km += d
+        total_sec += s
+        iso_weeks.add(st.isocalendar()[:2])
+
+    if total_km <= 0:
+        return None
+    return {
+        'weekly_km': round(total_km / weeks, 1),
+        'train_pace_sec': round(total_sec / total_km, 1),
+        'weeks_with_data': len(iso_weeks),
+    }
+
+
 def auto_create_prediction_for_target(user):
     """Generate prediction for user's current target marathon.
 
@@ -142,8 +269,11 @@ def auto_create_prediction_for_target(user):
     # averages. Single source of truth, never raises — falls back internally.
     temp_c, humidity_pct, weather_source = get_race_day_temperature(marathon, race_date)
 
+    prior = get_prior_marathon_features(user, race_date, target_marathon=marathon)
+    training_load = get_training_load(user, race_date)
     try:
-        result = predict_finish_time(user, marathon, race_date, temp_c, humidity_pct, 0.0)
+        result = predict_finish_time(user, marathon, race_date, temp_c, humidity_pct, 0.0,
+                                     prior_marathon=prior, training_load=training_load)
     except Exception:
         logger.exception(
             "auto-prediction failed for user=%s marathon=%s",
@@ -163,13 +293,16 @@ def auto_create_prediction_for_target(user):
         predicted_time_sec=result['predicted_time_sec'],
         confidence_interval_sec=result['confidence_interval_sec'],
         feature_importance=result.get('feature_importance', []),
-        model_version='hybrid_v1',
+        model_version='tiered_v1',
         features_snapshot={
             'vdot': float(user.current_vdot),
             'temp_c': temp_c,
             'humidity_pct': humidity_pct,
             'weather_source': weather_source,
             'mode': result['mode'],
+            'tier': result.get('tier'),
+            'prior_marathon_sec': prior['finish_sec'] if prior else None,
+            'weekly_km': training_load['weekly_km'] if training_load else None,
             'is_marathon_distance': result.get('is_marathon_distance', True),
             'auto_generated': True,
         },
@@ -178,42 +311,40 @@ def auto_create_prediction_for_target(user):
 
 # ── Marathon attempt detection ─────────────────────────────────────────────
 
-# Tolerance on the "completed" side: an activity within ±3 km of the
-# marathon's official distance counts as a finished race. GPS drift, long
-# courses certified at +0.1%, and runners packaging their warm-up into the
-# same FIT all live inside this band.
-_COMPLETED_TOLERANCE_KM = 3.0
-# Minimum distance for a same-day activity to count as a "started but did
-# not finish" race attempt. Below this we treat it as a regular short
-# training run that happened to land on race day (e.g. a 5 km shakeout).
+# Completion tolerance is ASYMMETRIC. A finisher's GPS very rarely reads more
+# than ~1.5 km short (tight tangents + drift), so anything shorter than that is
+# almost certainly a DNF/cut course — the old symmetric ±3 km counted a 39.2 km
+# run as a "finished marathon", which is wrong. The long side stays generous:
+# warm-up/cool-down packed into the same file, or weaving, reads long.
+_COMPLETED_SHORT_TOL_KM = 1.5
+_COMPLETED_LONG_TOL_KM = 3.0
+# Minimum distance for an activity to count as a "started but did not finish"
+# race attempt. Below this it's a regular short run on race day (e.g. shakeout).
 _DNF_MIN_DISTANCE_KM = 10.0
+# start_time is UTC; its .date() can differ by a day from the race's LOCAL date.
+# Allow ±1 day on the date match so a tz boundary doesn't drop a real race.
+_RACE_DATE_TOLERANCE_DAYS = 1
 
 
 def _classify_race_outcome(activity_distance_km, marathon_distance_km):
     """
-    Decide whether a same-day activity is 'completed', 'dnf', or no race
-    attempt at all. Returns one of {'completed', 'dnf', None}.
+    Classify a race-day activity as 'completed', 'dnf', or None (not a race).
 
-    'completed' — distance within ±3 km of official marathon distance.
-                  Could be a slight over-run (warm-up) or a hair short due
-                  to GPS, but in both cases the runner did finish.
+    'completed' — from 1.5 km short to 3 km long of the official distance.
+                  Short side is tight on purpose (a finisher doesn't read
+                  3 km short); long side absorbs warm-up/weaving.
     'dnf'       — ran at least 10 km but stopped well short of the finish.
-                  We record the activity for the historical record but
-                  leave actual_time_sec as the activity's duration so
-                  downstream analysis can decide what to do with it.
-    None        — too short to even count as a DNF attempt (e.g. a 5 km
-                  easy run that day) OR way longer than the marathon
-                  (e.g. an ultra). Skip.
+                  actual_time_sec stays the activity's duration; the ML export
+                  filters DNFs out, but the row stays as historical record.
+    None        — too short to be a DNF, or far longer than the marathon (ultra).
     """
     diff = activity_distance_km - marathon_distance_km
-    if abs(diff) <= _COMPLETED_TOLERANCE_KM:
+    if -_COMPLETED_SHORT_TOL_KM <= diff <= _COMPLETED_LONG_TOL_KM:
         return 'completed'
-    if diff > _COMPLETED_TOLERANCE_KM:
-        # Significantly longer than the marathon. Could be an ultra runner
-        # who uses our marathon-targeting feature for a longer race, but
-        # auto-detection isn't safe here — skip and let admin mark.
+    if diff > _COMPLETED_LONG_TOL_KM:
+        # Far longer than the marathon (ultra) — auto-detection isn't safe.
         return None
-    # diff < -_COMPLETED_TOLERANCE_KM — they ran less than the marathon.
+    # Ran meaningfully less than the marathon.
     if activity_distance_km >= _DNF_MIN_DISTANCE_KM:
         return 'dnf'
     return None
@@ -230,7 +361,7 @@ def record_marathon_attempt(activity):
 
     Detection rules:
       - User has target_marathon and target_race_date set
-      - Activity start_date == target_race_date
+      - Activity start date within ±1 day of target_race_date (UTC/local tz)
       - Distance classification yields 'completed' or 'dnf'
         (see _classify_race_outcome — full marathon vs DNF vs not-a-race)
 
@@ -251,7 +382,7 @@ def record_marathon_attempt(activity):
         return None
 
     activity_date = activity.start_time.date()
-    if activity_date != target_date:
+    if abs((activity_date - target_date).days) > _RACE_DATE_TOLERANCE_DAYS:
         return None
 
     outcome = _classify_race_outcome(
@@ -306,6 +437,7 @@ def record_marathon_attempt(activity):
     attempt.tsb_snapshot = pre_race_metrics.tsb if pre_race_metrics else user.current_tsb
     attempt.course_coefficient_used = target.difficulty_coefficient
     attempt.plan_compliance_pct = _compute_plan_compliance_pct(user, target_date)
+    attempt.training_snapshot = _compute_training_snapshot(user, activity_date)
     attempt.save()
 
     # Async fetch of real day-of weather. We don't await it — the attempt
@@ -385,3 +517,47 @@ def _compute_plan_compliance_pct(user, race_date):
         return None
     completed = qs.filter(activity__isnull=False).count()
     return round(100 * completed / total)
+
+
+def _compute_training_snapshot(user, race_date, weeks: int = 16) -> dict:
+    """
+    Frozen pre-race training-load features over the `weeks`-week build-up.
+
+    This is the signal the predictor most needs and currently ignores: not a
+    single best run, but the *shape of the training* — weekly volume, whether
+    the runner did long runs, how much they peaked. Stored on the attempt so a
+    future model can learn (training-load → marathon outcome).
+
+    Returns a dict; safe to call even with no activities (zeros).
+    """
+    from datetime import timedelta
+
+    start = race_date - timedelta(weeks=weeks)
+    rows = user.activities.filter(
+        is_valid=True,
+        start_time__date__gte=start,
+        start_time__date__lt=race_date,
+    ).values_list('start_time', 'distance_km')
+
+    curve = [0.0] * weeks
+    long_runs = 0          # runs >= 25 km (marathon-specific endurance work)
+    peak_long_run = 0.0
+    for st, dist in rows:
+        d = float(dist or 0)
+        widx = (st.date() - start).days // 7
+        if 0 <= widx < weeks:
+            curve[widx] += d
+        if d >= 25:
+            long_runs += 1
+            peak_long_run = max(peak_long_run, d)
+
+    total = sum(curve)
+    return {
+        'weeks': weeks,
+        'weekly_km_curve': [round(x, 1) for x in curve],
+        'avg_weekly_km': round(total / weeks, 1) if weeks else 0.0,
+        'peak_weekly_km': round(max(curve), 1) if curve else 0.0,
+        'total_km': round(total, 1),
+        'long_runs_25k_plus': long_runs,
+        'peak_long_run_km': round(peak_long_run, 1),
+    }

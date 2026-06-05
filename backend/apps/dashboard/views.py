@@ -1,7 +1,10 @@
+import logging
 from datetime import date, timedelta
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+
+logger = logging.getLogger(__name__)
 
 from apps.activities.models import Activity
 from apps.activities.serializers import ActivityListSerializer
@@ -75,13 +78,22 @@ class DashboardView(APIView):
             # Fallback: any prediction (e.g., quick-predict without target set)
             latest_pred = Prediction.objects.filter(user=user).first()
 
-        # Auto-create prediction on GET if user has a target but none exists yet
+        # If the user has a target but no prediction yet, ENQUEUE generation
+        # instead of doing it inline. A GET must stay read-only and must not
+        # block on Open-Meteo — the old inline call did both. The cache.add
+        # lock dedupes the enqueue so dashboard refetches don't pile up tasks;
+        # the prediction shows up on the next load once the worker finishes.
         if (not prediction_for_target) and user.target_marathon_id and user.current_vdot:
-            from apps.races.services import auto_create_prediction_for_target
-            created = auto_create_prediction_for_target(user)
-            if created:
-                latest_pred = created
-                prediction_for_target = True
+            try:
+                from django.core.cache import cache
+                from apps.races.tasks import generate_target_prediction
+                lock_key = f"gen_pred_inflight:{user.id}:{user.target_marathon_id}"
+                if cache.add(lock_key, True, 120):
+                    generate_target_prediction.delay(str(user.id))
+            except Exception:
+                # A broker/cache hiccup must not break the dashboard READ.
+                logger.warning("could not enqueue target prediction for user %s",
+                               user.id, exc_info=True)
 
         latest_prediction = PredictionSerializer(latest_pred).data if latest_pred else None
 

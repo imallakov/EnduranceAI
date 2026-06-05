@@ -107,6 +107,9 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
     'DEFAULT_THROTTLE_RATES': {
         'data_export': '1/hour',
+        'login': '10/min',        # brute-force guard (keyed by IP for anon)
+        'register': '5/hour',     # signup abuse guard
+        'prediction': '30/hour',  # each call hits the weather API + inference
     },
 }
 
@@ -175,8 +178,24 @@ ML_MODELS_DIR = BASE_DIR / 'ml' / 'models'
 # GPX data
 GPX_DATA_DIR = BASE_DIR / 'data' / 'gpx'
 
-# CORS
-CORS_ALLOW_ALL_ORIGINS = True  # dev only, restricted in production
+# CORS — credentials are enabled because auth uses an httpOnly refresh cookie.
+# Credentialed CORS forbids the "*" wildcard, so we always use explicit origins
+# (dev defaults to the Vite dev server; prod overrides via env).
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    default='http://localhost:5173,http://127.0.0.1:5173',
+).split(',')
+
+# ── Auth cookies (httpOnly refresh token) ───────────────────────────────────
+# The long-lived refresh token is delivered ONLY as an httpOnly cookie so XSS
+# can't read it from JS (the old design kept it in localStorage). The access
+# token stays short-lived and lives in the SPA's memory. The cookie is scoped
+# to /api/auth/ so it's sent only to the refresh/logout endpoints.
+REFRESH_COOKIE_NAME = 'refresh_token'
+REFRESH_COOKIE_PATH = '/api/auth/'
+REFRESH_COOKIE_SAMESITE = config('REFRESH_COOKIE_SAMESITE', default='Lax')
+REFRESH_COOKIE_SECURE = False  # overridden to True in production
 
 LOGGING = {
     'version': 1,
