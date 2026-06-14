@@ -135,7 +135,7 @@ class TandaTests(unittest.TestCase):
 
 class MinettiTests(unittest.TestCase):
     def test_flat_baseline(self):
-        self.assertAlmostEqual(minetti_energy_cost(0.0), 2.5, places=3)
+        self.assertAlmostEqual(minetti_energy_cost(0.0), 3.6, places=3)
 
     def test_uphill_costs_more_downhill_less(self):
         self.assertGreater(minetti_energy_cost(0.10), minetti_energy_cost(0.0))

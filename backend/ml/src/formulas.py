@@ -83,6 +83,19 @@ def tanda_marathon_pace_sec(weekly_km: float, train_pace_sec_per_km: float) -> f
     return 17.1 + 140.0 * math.exp(-0.0053 * weekly_km) + 0.55 * train_pace_sec_per_km
 
 
+def tanda_marathon_time_sec(weekly_km: float, train_pace_sec_per_km: float) -> float | None:
+    """Predicted marathon finish time (seconds) via the Tanda formula.
+
+    Convenience wrapper over tanda_marathon_pace_sec: multiplies the predicted
+    mean marathon pace by the marathon distance (42.195 km). Returns None on
+    nonsensical input (propagated from the pace helper).
+    """
+    pace = tanda_marathon_pace_sec(weekly_km, train_pace_sec_per_km)
+    if pace is None:
+        return None
+    return pace * 42.195
+
+
 def robust_vdot(vdots: list) -> float | None:
     """
     Robust current-VDOT estimate from recent per-run VDOTs.

@@ -3,7 +3,7 @@ import math
 from haversine import haversine as _haversine, Unit
 
 
-FLAT_ENERGY_COST = 2.5  # J/kg/m on flat
+FLAT_ENERGY_COST = 3.6  # J/kg/m on flat (running cost baseline, Minetti 2002)
 
 # Resample raw GPS points to fixed-distance segments before computing slopes.
 # Raw point-to-point slopes are dominated by GPS/barometric noise (and by
@@ -30,12 +30,13 @@ def _haversine_m(lat1, lon1, lat2, lon2) -> float:
 
 def minetti_energy_cost(slope: float) -> float:
     """slope is dimensionless (0.1 = 10% grade)."""
-    return (280.5 * slope ** 5
-            - 58.7 * slope ** 4
-            - 76.8 * slope ** 3
-            + 51.9 * slope ** 2
-            + 19.6 * slope
-            + 2.5)
+    s = max(-0.45, min(0.45, slope))
+    return (155.4 * s ** 5
+            - 30.4 * s ** 4
+            - 43.3 * s ** 3
+            + 46.3 * s ** 2
+            + 19.5 * s
+            + 3.6)
 
 
 def _smooth(values: list, window: int) -> list:
