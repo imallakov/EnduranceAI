@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   IconLogo, IconDashboard, IconActivity, IconPredict, IconPlan,
-  IconRace, IconAnalytics, IconSettings, IconLogout, IconRefresh,
+  IconRace, IconSettings, IconLogout, IconRefresh,
 } from '../icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useStravaStatus, useStravaSync } from '../../hooks/useStrava';
@@ -41,7 +41,6 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onClose }) => {
     { label: t.nav.predictions, to: '/predictions', Icon: IconPredict },
     { label: t.nav.trainingPlan, to: '/plan', Icon: IconPlan, badge: 'NEW' },
     { label: t.nav.marathons, to: '/marathons', Icon: IconRace },
-    { label: t.nav.analytics, to: '/analytics', Icon: IconAnalytics },
   ];
 
   const BOTTOM_ITEMS: NavItem[] = [
