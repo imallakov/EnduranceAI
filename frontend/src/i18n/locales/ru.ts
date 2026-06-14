@@ -374,6 +374,7 @@ export const ru: Translations = {
     phaseTaperDesc: 'Заострение, снижение объёма',
     today: 'СЕГОДНЯ',
     prePlanLabel: 'ДО ПЛАНА',
+    missedLabel: 'ПРОПУЩЕНО',
     rest: 'Rest',
     recoveryDay: 'день отдыха',
     allWeeks: 'Все недели',

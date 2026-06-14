@@ -372,6 +372,7 @@ export const en = {
     phaseTaperDesc: 'Sharpen, reduce volume',
     today: 'TODAY',
     prePlanLabel: 'PRE-PLAN',
+    missedLabel: 'MISSED',
     rest: 'Rest',
     recoveryDay: 'recovery day',
     allWeeks: 'All weeks',

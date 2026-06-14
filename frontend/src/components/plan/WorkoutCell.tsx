@@ -138,6 +138,15 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
             {t.plan.prePlanLabel}
           </div>
         )}
+        {isMissed && (
+          <div style={{
+            position: 'absolute', top: 6, right: 8,
+            fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
+            color: 'var(--muted)', textTransform: 'uppercase',
+          }}>
+            {t.plan.missedLabel}
+          </div>
+        )}
       </div>
     );
   }
@@ -254,6 +263,20 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
           border: '1px solid var(--border-soft)',
         }}>
           {t.plan.prePlanLabel}
+        </div>
+      )}
+
+      {/* Missed badge — a past planned workout with no logged run */}
+      {isMissed && (
+        <div style={{
+          position: 'absolute', top: -1, right: -1,
+          padding: '2px 8px 3px',
+          background: 'var(--bg)', color: 'var(--muted)',
+          fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+          borderRadius: '0 13px 0 6px',
+          border: '1px solid var(--border-soft)',
+        }}>
+          {t.plan.missedLabel}
         </div>
       )}
     </div>

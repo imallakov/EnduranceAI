@@ -137,6 +137,16 @@ class Command(BaseCommand):
                     structure=wo.get('structure', {}),
                 )
 
+        # The plan is back-dated: its workouts live in the past, but created_at
+        # defaults to now(). The UI treats any not-completed workout dated
+        # BEFORE created_at as "pre-plan" (neutral «ДО ПЛАНА» badge) and never
+        # as missed — so without this the whole past reads as pre-plan and the
+        # completed/missed grid disappears. Pin created_at to the plan start.
+        TrainingPlan.objects.filter(pk=plan.pk).update(
+            created_at=datetime(plan_start.year, plan_start.month, plan_start.day,
+                                tzinfo=timezone.utc),
+        )
+
         current_week_num = (today - plan_start).days // 7 + 1
         prev_week_num = current_week_num - 1     # deliberately under-do this one
 

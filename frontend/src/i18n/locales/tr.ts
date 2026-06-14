@@ -374,6 +374,7 @@ export const tr: Translations = {
     phaseTaperDesc: 'Keskinleştirme, hacim azaltma',
     today: 'BUGÜN',
     prePlanLabel: 'PLAN ÖNCESİ',
+    missedLabel: 'KAÇIRILDI',
     rest: 'Rest',
     recoveryDay: 'dinlenme günü',
     allWeeks: 'Tüm haftalar',
