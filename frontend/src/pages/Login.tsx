@@ -26,6 +26,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,22 +84,37 @@ const Login: React.FC = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t.auth.password}</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              placeholder="••••••••"
-              className="focus-input"
-              style={{
-                height: 40, border: '1px solid var(--border)', borderRadius: 8,
-                padding: '0 12px', fontSize: 14, fontFamily: 'inherit',
-                background: '#fff', color: 'var(--text)', outline: 'none',
-                width: '100%', boxSizing: 'border-box',
-                transition: 'border-color 120ms ease, box-shadow 120ms ease',
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPwd ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="focus-input"
+                style={{
+                  height: 40, border: '1px solid var(--border)', borderRadius: 8,
+                  padding: '0 44px 0 12px', fontSize: 14, fontFamily: 'inherit',
+                  background: '#fff', color: 'var(--text)', outline: 'none',
+                  width: '100%', boxSizing: 'border-box',
+                  transition: 'border-color 120ms ease, box-shadow 120ms ease',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd((s) => !s)}
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute', right: 4, top: 0, height: 40, width: 38,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 16, padding: 0, lineHeight: 1,
+                }}
+              >
+                {showPwd ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
 
           {error && (

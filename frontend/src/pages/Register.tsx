@@ -38,6 +38,7 @@ const Register: React.FC = () => {
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
 
   // Pre-fetch active policy IDs so we can auto-accept on registration
   const [policyIds, setPolicyIds] = useState<{ privacy?: string; terms?: string }>({});
@@ -135,17 +136,31 @@ const Register: React.FC = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t.auth.password}</label>
-            <input
-              type="password" value={form.password} onChange={set('password')}
-              required autoComplete="new-password" placeholder={t.auth.minChars}
-              className="focus-input" style={INPUT_STYLE}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPwd ? 'text' : 'password'} value={form.password} onChange={set('password')}
+                required autoComplete="new-password" placeholder={t.auth.minChars}
+                className="focus-input" style={{ ...INPUT_STYLE, paddingRight: 44 }}
+              />
+              <button
+                type="button" onClick={() => setShowPwd((s) => !s)}
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute', right: 4, top: 0, height: 40, width: 38,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 16, padding: 0, lineHeight: 1,
+                }}
+              >
+                {showPwd ? '🙈' : '👁️'}
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{t.auth.confirmPassword}</label>
             <input
-              type="password" value={form.password2} onChange={set('password2')}
+              type={showPwd ? 'text' : 'password'} value={form.password2} onChange={set('password2')}
               required autoComplete="new-password" placeholder={t.auth.repeatPassword}
               className="focus-input" style={INPUT_STYLE}
             />
