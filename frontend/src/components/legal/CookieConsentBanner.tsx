@@ -51,47 +51,28 @@ const CookieConsentBanner: React.FC = () => {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-label="Cookie consent"
-      style={{
-        position: 'fixed',
-        bottom: 24,
-        left: 24,
-        right: 24,
-        maxWidth: 720,
-        margin: '0 auto',
-        zIndex: 100,
-        background: '#fff',
-        border: '1px solid var(--border)',
-        borderRadius: 14,
-        boxShadow: '0 16px 48px -16px rgba(15,23,42,0.22)',
-        padding: '18px 22px',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 20,
-      }}
-    >
-      {/* Icon */}
-      <div style={{ fontSize: 22, flexShrink: 0, marginTop: 1 }}>🍪</div>
-
-      {/* Text */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
-          {t.cookies.bannerTitle}
+    <div role="dialog" aria-label="Cookie consent" className="cookie-banner">
+      {/* Icon + text */}
+      <div className="cookie-banner__body">
+        <div style={{ fontSize: 22, flexShrink: 0, marginTop: 1 }}>🍪</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
+            {t.cookies.bannerTitle}
+          </div>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>
+            {t.cookies.bannerBody}{' '}
+            <Link to="/legal/cookies" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>
+              {t.common.learnMore}
+            </Link>
+          </p>
         </div>
-        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55 }}>
-          {t.cookies.bannerBody}{' '}
-          <Link to="/legal/cookies" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 500 }}>
-            {t.common.learnMore}
-          </Link>
-        </p>
       </div>
 
       {/* Buttons */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+      <div className="cookie-banner__actions">
         <Link
           to="/legal/cookies"
+          className="cookie-banner__settings-link"
           style={{ fontSize: 12, color: 'var(--muted)', textDecoration: 'none', whiteSpace: 'nowrap' }}
         >
           {t.cookies.cookieSettings} →
