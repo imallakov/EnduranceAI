@@ -43,6 +43,16 @@ export async function swapWorkoutType(
   return data;
 }
 
+/** Phase 2 re-flow: reorder the current week so no two hard days are adjacent.
+ *  Returns the refreshed plan so the calendar can re-render in place. */
+export async function reschedulePlanWeek(planId: string): Promise<TrainingPlan> {
+  const { data } = await apiClient.post<{ result: unknown; plan: TrainingPlan }>(
+    `/api/plans/${planId}/reschedule-week/`,
+    {},
+  );
+  return data.plan;
+}
+
 export async function exportPlanPDF(id: string): Promise<void> {
   const { data } = await apiClient.get(`/api/plans/${id}/export/pdf/`, { responseType: 'blob' });
   const url = URL.createObjectURL(data as Blob);

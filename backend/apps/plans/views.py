@@ -11,7 +11,7 @@ from .serializers import (
     TrainingPlanSerializer, PlanWeekSerializer,
     GeneratePlanSerializer, WorkoutCompleteSerializer, PlanWorkoutSerializer,
 )
-from .generator import generate_plan
+from .generator import generate_plan, reschedule_current_week
 from .export import export_plan_pdf, export_plan_csv
 
 
@@ -156,6 +156,31 @@ class ExportPlanCSVView(APIView):
             as_attachment=True,
             filename=f'training_plan_{plan.id}.csv',
         )
+
+
+class ReschedulePlanWeekView(APIView):
+    """POST /api/plans/{id}/reschedule-week/ — Phase 2 reorder-only re-flow.
+
+    Reorders the remaining days of the current week so no two hard sessions are
+    adjacent. Same workouts, same weekly volume, long run anchored. Returns the
+    refreshed plan so the UI can re-render the calendar in place.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            plan = TrainingPlan.objects.get(id=pk, user=request.user)
+        except TrainingPlan.DoesNotExist:
+            return Response({'error': 'Not found'}, status=404)
+
+        result = reschedule_current_week(plan)
+        plan = (TrainingPlan.objects
+                .prefetch_related('weeks__workouts')
+                .get(pk=plan.pk))
+        return Response({
+            'result': result,
+            'plan': TrainingPlanSerializer(plan).data,
+        })
 
 
 class WorkoutCompleteView(APIView):

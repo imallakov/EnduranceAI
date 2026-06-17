@@ -17,6 +17,7 @@ import ExportMenu from '../components/plan/ExportMenu';
 import PacesRefreshedBanner from '../components/plan/PacesRefreshedBanner';
 import RecoveryWeekBanner from '../components/plan/RecoveryWeekBanner';
 import GoalFeasibilityBanner from '../components/plan/GoalFeasibilityBanner';
+import ReflowBanner from '../components/plan/ReflowBanner';
 
 import { IconRefresh, IconChevDown, IconChevRight } from '../components/icons';
 import { useT, useLang } from '../i18n/context';
@@ -217,6 +218,16 @@ const Plan: React.FC = () => {
           {/* L4 goal feasibility — persistent state banner above plan content */}
           {plan.goal_feasibility && (
             <GoalFeasibilityBanner info={plan.goal_feasibility} />
+          )}
+
+          {/* Phase 2 re-flow — two hard days landed <2 days apart; offer reorder */}
+          {plan.reflow_suggestion && (
+            <ReflowBanner
+              info={plan.reflow_suggestion}
+              planId={plan.id}
+              onRescheduled={refetch}
+              t={t}
+            />
           )}
 
           {/* Phase strip */}

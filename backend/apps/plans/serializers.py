@@ -63,6 +63,10 @@ class TrainingPlanSerializer(serializers.ModelSerializer):
     # to the target_time the user originally aimed for. UI uses this to render
     # an "on track / ahead / behind" banner.
     goal_feasibility = serializers.SerializerMethodField()
+    # Phase 2 re-flow: present when the current week has two hard efforts landing
+    # <2 days apart with at least one still movable. UI renders a banner offering
+    # to reorder the week (POST .../reschedule-week/). Null when no collision.
+    reflow_suggestion = serializers.SerializerMethodField()
 
     class Meta:
         model = TrainingPlan
@@ -221,6 +225,14 @@ class TrainingPlanSerializer(serializers.ModelSerializer):
             'vdot_used': round(vdot, 1),
             'course_coeff_used': round(course_coeff, 4),
         }
+
+    def get_reflow_suggestion(self, obj):
+        """Phase 2: surface a hard-days-too-close collision in the current week."""
+        from .generator import detect_week_collision
+        try:
+            return detect_week_collision(obj)
+        except Exception:
+            return None
 
     def get_recovery_week(self, obj):
         """L3 banner data: present when current week is a recovery rewrite."""

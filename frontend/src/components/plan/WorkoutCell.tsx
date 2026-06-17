@@ -63,6 +63,12 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
     planCreatedAt && !workout.completed && dayStartMs(wDate) < dayStartMs(planCreatedAt)
   );
   const isMissed = !workout.completed && !isToday && wDate < today && !isPreCreation;
+  // Run linked to this workout but logged on a different day than planned.
+  // Backend records the signed offset; we show "done (+2d)" instead of nothing,
+  // so a moved session reads as completed rather than slipping toward "missed".
+  const shiftDays = workout.shift_days ?? 0;
+  const isShifted = workout.completed && Math.abs(shiftDays) >= 1;
+  const shiftLabel = `${shiftDays > 0 ? '+' : '−'}${Math.abs(shiftDays)}${t.plan.shiftedDaySuffix}`;
 
   const dowLabel  = wDate.toLocaleDateString(lang, { weekday: 'short' }).toUpperCase();
   const dateLabel = wDate.toLocaleDateString(lang, { month: 'short', day: 'numeric' });
@@ -145,6 +151,15 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
             color: 'var(--muted)', textTransform: 'uppercase',
           }}>
             {t.plan.missedLabel}
+          </div>
+        )}
+        {isShifted && (
+          <div style={{
+            position: 'absolute', top: 6, right: 8,
+            fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
+            color: '#059669', textTransform: 'uppercase',
+          }}>
+            {shiftLabel}
           </div>
         )}
       </div>
@@ -277,6 +292,20 @@ const WorkoutCell: React.FC<WorkoutCellProps> = ({ workout, weekStartDate, isCur
           border: '1px solid var(--border-soft)',
         }}>
           {t.plan.missedLabel}
+        </div>
+      )}
+
+      {/* Shifted badge — completed, but the run was logged off the planned day */}
+      {isShifted && !isToday && (
+        <div style={{
+          position: 'absolute', top: -1, right: -1,
+          padding: '2px 8px 3px',
+          background: 'rgba(16,185,129,0.12)', color: '#059669',
+          fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+          borderRadius: '0 13px 0 6px',
+          border: '1px solid rgba(16,185,129,0.30)',
+        }}>
+          {shiftLabel}
         </div>
       )}
     </div>

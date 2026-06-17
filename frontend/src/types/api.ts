@@ -300,6 +300,9 @@ export interface PlanWorkout {
   pace_max_formatted: string | null;
   structure: Record<string, unknown>;
   completed: boolean;
+  // Signed offset of the linked run from the planned day: + later, − earlier,
+  // 0 same day, null = not linked. Drives the "shifted" chip on the cell.
+  shift_days: number | null;
   activity: string | null;
   hr_min: number | null;
   hr_max: number | null;
@@ -376,6 +379,14 @@ export interface TrainingPlan {
     status: 'ahead' | 'on_track' | 'slightly_behind' | 'behind';
     vdot_used: number;
     course_coeff_used: number;
+  } | null;
+  /** Phase 2 re-flow: present when the current week has two hard efforts
+   *  landing <2 days apart with at least one still movable. Null otherwise. */
+  reflow_suggestion: {
+    week_number: number;
+    gap_days: number;       // 0 or 1 — calendar days between the two hard efforts
+    first_date: string;     // ISO date of the earlier hard effort
+    second_date: string;    // ISO date of the later hard effort
   } | null;
 }
 

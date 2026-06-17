@@ -15,6 +15,11 @@ _BUILD_WEIGHTS = [('base', 0.27), ('early_quality', 0.33), ('late_quality', 0.40
 # volume ramp must never push the long run beyond this.
 LONG_RUN_ABS_CAP_KM = 32.0
 
+# Sessions that load the body hard and need a recovery day around them. Used by
+# the Phase-2 re-flow to detect/prevent two hard days landing back-to-back.
+QUALITY_TYPES = frozenset({'tempo', 'interval', 'repetition', 'marathon_pace'})
+HARD_TYPES = QUALITY_TYPES | {'long'}
+
 WORKOUT_TEMPLATES = {
     'base': [
         ('rest', None),
@@ -341,6 +346,13 @@ def score_workout_performance(actual_pace_sec, pace_min_sec, pace_max_sec, worko
     return 0   # unknown type → neutral
 
 
+# How many days a real run may sit from its planned day and still be linked.
+# Beginners routinely shift a session by a couple of days; within this window we
+# count it as done (and record the offset in PlanWorkout.shift_days) rather than
+# orphaning the run and falsely marking the workout missed.
+MATCH_WINDOW_DAYS = 3
+
+
 def auto_link_recent_activities(user) -> dict:
     """
     For each recently-uploaded activity that isn't yet attached to a planned
@@ -353,8 +365,10 @@ def auto_link_recent_activities(user) -> dict:
     starts looking like a static spreadsheet that ignores what you actually ran.
 
     Matching strategy:
-      - Date proximity (±1 day) — users sometimes shift Tuesday's tempo to
-        Wednesday; we still count it. Same-day matches always win over ±1.
+      - Date proximity (±MATCH_WINDOW_DAYS) — users routinely shift a session
+        by a few days (Tuesday's tempo run on Thursday); we still count it and
+        store the signed offset in shift_days. Same-day matches always win, and
+        each day of offset outweighs any distance difference in the score.
       - Distance closeness as tiebreaker when multiple candidates remain.
       - Rest days excluded — they have no distance/pace to match against.
 
@@ -413,6 +427,7 @@ def auto_link_recent_activities(user) -> dict:
 
         best = None
         best_score = float('inf')
+        best_target_date = None
         for w in candidates:
             if w.day_of_week is None:
                 continue
@@ -420,7 +435,7 @@ def auto_link_recent_activities(user) -> dict:
                            + timedelta(days=(w.plan_week.week_number - 1) * 7
                                             + w.day_of_week))
             day_diff = abs((act_date - target_date).days)
-            if day_diff > 1:
+            if day_diff > MATCH_WINDOW_DAYS:
                 continue
 
             # Distance closeness: ratio so 5k-on-10k mismatch outranks 10k-on-11k
@@ -431,16 +446,22 @@ def auto_link_recent_activities(user) -> dict:
             else:
                 dist_diff = 1.0
 
-            # Composite score: same-day match (0) trumps ±1 day (1) regardless
-            # of distance. Distance only acts as tiebreaker within same day_diff.
+            # Composite score: each day of offset costs 2, dist_diff is in
+            # [0, 1], so a closer day ALWAYS beats a farther one across the whole
+            # ±MATCH_WINDOW_DAYS window. Distance only breaks ties within the
+            # same day_diff.
             score = day_diff * 2 + dist_diff
             if score < best_score:
                 best_score = score
                 best = w
+                best_target_date = target_date
 
         if best is not None:
             best.activity = act
             best.completed = True
+            # Signed offset from the planned day (+ later, − earlier, 0 same day)
+            # so the UI can show "done (shifted)" instead of a false "missed".
+            best.shift_days = (act_date - best_target_date).days
             # L2: capture performance at link time. Using the workout's
             # CURRENT pace_min/pace_max (which reflect the latest VDOT via L1)
             # so the score represents "did you hit the target asked of you".
@@ -454,7 +475,8 @@ def auto_link_recent_activities(user) -> dict:
                 best.workout_type,
             )
             best.save(update_fields=[
-                'activity', 'completed', 'actual_pace_sec', 'performance_score',
+                'activity', 'completed', 'shift_days',
+                'actual_pace_sec', 'performance_score',
             ])
             linked_count += 1
 
@@ -625,3 +647,135 @@ def _workout_paces(wtype: str, paces: dict, dist: float | None) -> tuple:
         p = paces['M']
         return p, int(p * 1.02), {}
     return None, None, {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 2 — proactive re-flow (reorder-only)
+#
+# A shift never changes the plan grid (the workout keeps its day_of_week; we only
+# record shift_days). So a real collision is: the runner's last ACTUAL hard
+# effort (planned day + shift) sits within 1 day of the NEXT planned hard day,
+# leaving no recovery between two hard sessions. detect_week_collision surfaces
+# that as a banner signal; reschedule_current_week fixes it by REORDERING the
+# remaining days of the current week — same workouts, same weekly volume, the
+# long run stays anchored — so no two hard days are adjacent.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _current_week_number(plan, today=None) -> int:
+    from datetime import date as _date
+    today = today or _date.today()
+    return max(1, (today - plan.start_date).days // 7 + 1)
+
+
+def _workout_target_date(plan, workout):
+    """Planned calendar date of a workout (week offset + day_of_week)."""
+    return plan.start_date + timedelta(
+        days=(workout.plan_week.week_number - 1) * 7 + (workout.day_of_week or 0)
+    )
+
+
+def detect_week_collision(plan, today=None) -> dict | None:
+    """
+    Return collision info if the current week has two hard efforts <2 days apart
+    where at least one is still movable (future + not completed), else None.
+
+    Completed workouts count at their ACTUAL date (target + shift_days); future
+    ones at their planned date. Read-only — safe to call from a serializer.
+    """
+    from datetime import date as _date
+    from .models import PlanWeek
+    today = today or _date.today()
+    week_num = _current_week_number(plan, today)
+    try:
+        week = PlanWeek.objects.get(plan=plan, week_number=week_num)
+    except PlanWeek.DoesNotExist:
+        return None
+
+    efforts = []   # (effective_date, is_movable)
+    for w in week.workouts.all():
+        if w.workout_type not in HARD_TYPES:
+            continue
+        target = _workout_target_date(plan, w)
+        if w.completed:
+            efforts.append((target + timedelta(days=w.shift_days or 0), False))
+        elif target >= today:
+            efforts.append((target, True))
+        # past + not completed = missed; ignore for spacing
+
+    efforts.sort(key=lambda e: e[0])
+    for (d1, m1), (d2, m2) in zip(efforts, efforts[1:]):
+        gap = (d2 - d1).days
+        if gap < 2 and (m1 or m2):
+            return {
+                'week_number': week_num,
+                'gap_days': gap,
+                'first_date': d1.isoformat(),
+                'second_date': d2.isoformat(),
+            }
+    return None
+
+
+def reschedule_current_week(plan, today=None) -> dict:
+    """
+    Reorder the remaining (future, not-completed) days of the current week so no
+    two hard sessions are adjacent. Keeps the exact same set of workouts and the
+    weekly volume; the long run stays on its day (anchored). Only day_of_week
+    values are reassigned among the movable workouts' own slots.
+    """
+    from datetime import date as _date
+    from .models import PlanWeek
+    today = today or _date.today()
+    week_num = _current_week_number(plan, today)
+    try:
+        week = PlanWeek.objects.get(plan=plan, week_number=week_num)
+    except PlanWeek.DoesNotExist:
+        return {'rescheduled': False, 'reason': 'week_not_found'}
+
+    workouts = list(week.workouts.all())
+
+    # Movable = future, not completed, not the long run (anchored). These are the
+    # only days we may permute; everything else stays put.
+    movable, fixed_hard_days = [], set()
+    for w in workouts:
+        target = _workout_target_date(plan, w)
+        is_future = target >= today
+        if w.completed and w.workout_type in HARD_TYPES:
+            # pin completed hard efforts at their actual day-of-week offset
+            fixed_hard_days.add((w.day_of_week or 0) + (w.shift_days or 0))
+        if w.workout_type == 'long':
+            fixed_hard_days.add(w.day_of_week or 0)
+            continue
+        if is_future and not w.completed:
+            movable.append(w)
+
+    if len(movable) < 2:
+        return {'rescheduled': False, 'reason': 'nothing_to_reorder'}
+
+    slots = sorted(w.day_of_week for w in movable)
+    hard = [w for w in movable if w.workout_type in HARD_TYPES]
+    soft = [w for w in movable if w.workout_type not in HARD_TYPES]
+
+    # Greedy fill of slots in calendar order. Place a hard session only when
+    # neither neighbouring day is hard (already-placed, or a fixed pin).
+    placed = {}                       # day_of_week -> workout
+    hard_days = set(fixed_hard_days)  # running set of all hard day offsets
+    hi = si = 0
+    for day in slots:
+        prev_hard = (day - 1) in hard_days          # already placed or pinned
+        next_hard = (day + 1) in fixed_hard_days    # only pins are known ahead
+        can_hard = hi < len(hard) and not prev_hard and not next_hard
+        if can_hard:
+            placed[day] = hard[hi]; hi += 1; hard_days.add(day)
+        elif si < len(soft):
+            placed[day] = soft[si]; si += 1
+        else:                                        # only hard left → forced
+            placed[day] = hard[hi]; hi += 1; hard_days.add(day)
+
+    moved = 0
+    for day, w in placed.items():
+        if w.day_of_week != day:
+            w.day_of_week = day
+            w.save(update_fields=['day_of_week'])
+            moved += 1
+
+    return {'rescheduled': moved > 0, 'moved': moved, 'week_number': week_num}

@@ -77,6 +77,11 @@ class PlanWorkout(models.Model):
     hr_min = models.SmallIntegerField(null=True, blank=True)
     hr_max = models.SmallIntegerField(null=True, blank=True)
     completed = models.BooleanField(default=False)
+    # Signed offset of the actual run from the planned day: + = run later than
+    # planned, − = earlier, 0 = same day, null = not yet linked. Lets the UI
+    # show "done (shifted +2d)" instead of falsely marking the day missed when
+    # a runner moves e.g. Tuesday's tempo to Thursday.
+    shift_days = models.SmallIntegerField(null=True, blank=True)
     activity = models.ForeignKey(
         'activities.Activity', on_delete=models.SET_NULL, null=True, blank=True
     )
