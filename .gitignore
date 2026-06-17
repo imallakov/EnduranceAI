@@ -33,8 +33,9 @@ yarn-error.log*
 .DS_Store
 .mcp.json
 
-# Presentations
+# Presentations / documents (VKR artifacts — not app code)
 *.pptx
+*.docx
 
 # Logs and databases
 *.log
