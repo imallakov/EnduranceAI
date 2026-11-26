@@ -460,7 +460,9 @@ const Activities: React.FC = () => {
 
     for (const file of valid) {
       const isZip = getExt(file.name) === 'zip';
-      const jobId = crypto.randomUUID();
+      // ponytail: not crypto.randomUUID() — that's undefined over plain HTTP
+      // (secure-context only); this is just a local React list key.
+      const jobId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       setJobs(prev => [...prev, { id: jobId, filename: file.name, isZip, phase: 'uploading' }]);
 

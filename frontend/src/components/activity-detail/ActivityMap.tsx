@@ -56,6 +56,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ encodedPolyline }) => {
       key={encodedPolyline.slice(0, 32)}
       center={center}
       zoom={14}
+      maxZoom={18}
       style={{ width: '100%', height: '100%', background: '#1E1B4B' }}
       zoomControl={false}
       scrollWheelZoom={true}
@@ -65,23 +66,17 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ encodedPolyline }) => {
       <TileLayer
         url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
         attribution='&copy; <a href="https://www.esri.com">Esri</a>'
+        maxNativeZoom={16}
+        maxZoom={18}
       />
-      {/* 4-layer glow polyline */}
+      {/* Soft halo + white core — single glow, no concentric "frames" */}
       <Polyline
         positions={positions}
-        pathOptions={{ color: '#4F46E5', weight: 44, opacity: 0.40, className: 'route-glow-l1' }}
-      />
-      <Polyline
-        positions={positions}
-        pathOptions={{ color: '#818CF8', weight: 28, opacity: 0.50, className: 'route-glow-l2' }}
+        pathOptions={{ color: '#6366F1', weight: 10, opacity: 0.35, className: 'route-glow-l2' }}
       />
       <Polyline
         positions={positions}
-        pathOptions={{ color: '#A5B4FC', weight: 14, opacity: 0.65, className: 'route-glow-l3' }}
-      />
-      <Polyline
-        positions={positions}
-        pathOptions={{ color: '#FFFFFF', weight: 4, opacity: 1 }}
+        pathOptions={{ color: '#FFFFFF', weight: 3.5, opacity: 1 }}
       />
       <Marker position={positions[0]} icon={startIcon} />
       <Marker position={positions[positions.length - 1]} icon={finishIcon} />
