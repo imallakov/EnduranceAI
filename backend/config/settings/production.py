@@ -34,15 +34,21 @@ DATABASES = {
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
 
+# Single switch: HTTP_ONLY=true runs the app without TLS (dev / no-domain IP
+# deploy) — turns off the HTTPS redirect, Secure cookies and HSTS so plain-HTTP
+# auth works. Default False = full hardening (real production behind HTTPS).
+HTTP_ONLY = config('HTTP_ONLY', default=False, cast=bool)
+_secure = not HTTP_ONLY
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_SSL_REDIRECT = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = _secure
+SESSION_COOKIE_SECURE = _secure
+CSRF_COOKIE_SECURE = _secure
 
 # ── Browser / transport hardening ───────────────────────────────────────────
-# HSTS: tell browsers to only ever use HTTPS. Configurable so a first cautious
-# deploy can start with a small value before committing to a year + preload.
-SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=31536000, cast=int)
+# HSTS: tell browsers to only ever use HTTPS. Forced off in HTTP_ONLY mode
+# (an HSTS header over http would lock the browser out of the site).
+SECURE_HSTS_SECONDS = 0 if HTTP_ONLY else config('SECURE_HSTS_SECONDS', default=31536000, cast=int)
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -50,7 +56,6 @@ SECURE_REFERRER_POLICY = 'same-origin'
 SESSION_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
 
-# The httpOnly refresh cookie must only travel over HTTPS in production. If the
-# SPA and API are on different registrable domains, set REFRESH_COOKIE_SAMESITE
-# to 'None' in the env (requires Secure, which is enforced here).
-REFRESH_COOKIE_SECURE = True
+# The httpOnly refresh cookie travels over HTTPS in production; in HTTP_ONLY
+# mode it must be allowed over plain http or auth refresh breaks.
+REFRESH_COOKIE_SECURE = _secure
