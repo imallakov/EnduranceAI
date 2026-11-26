@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
+import { darkTileUrl, lightTileUrl } from '../map-tiles';
 import L from 'leaflet';
 import polylineDecode from '@mapbox/polyline';
 
@@ -144,9 +145,7 @@ const MarathonMiniMap: React.FC<Props> = ({
     positions.reduce((s, p) => s + p[1], 0) / positions.length,
   ];
 
-  const tileUrl = theme === 'dark'
-    ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
-    : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+  const tileUrl = theme === 'dark' ? darkTileUrl() : lightTileUrl();
 
   return (
     <MapContainer

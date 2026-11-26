@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
+import { darkTileUrl, TILE_ATTR } from '../map-tiles';
 import L from 'leaflet';
 import polylineDecode from '@mapbox/polyline';
 
@@ -63,12 +64,7 @@ const ActivityMap: React.FC<ActivityMapProps> = ({ encodedPolyline }) => {
       // Attribution required by OSM + CARTO terms — styled subtly via CSS
       attributionControl={true}
     >
-      <TileLayer
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-        attribution='&copy; <a href="https://www.esri.com">Esri</a>'
-        maxNativeZoom={16}
-        maxZoom={18}
-      />
+      <TileLayer url={darkTileUrl()} attribution={TILE_ATTR} maxZoom={18} />
       {/* Soft halo + white core — single glow, no concentric "frames" */}
       <Polyline
         positions={positions}
